@@ -165,7 +165,7 @@ paths:
                   ok: true
                   panicGuide: "https://dewey.ft.com/smartlogic-notifier.html"
                   severity: 1
-                  technicalSummary: "TODO"
+                  technicalSummary: "A technical summary."
               description: TODO
               name: "Smartlogic Notifier"
               ok: true
