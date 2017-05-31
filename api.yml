@@ -11,7 +11,6 @@ info:
     url: https://opensource.org/licenses/MIT
 host: publishing-prod-up.ft.com
 schemes:
-  - http
   - https
 basePath: /
 
@@ -29,14 +28,18 @@ paths:
           in: query
           required: true
           description: ID of the model which was changed.
+          type: string
         - name: affectedGraphId
           in: query
           required: true
           description: ID of a model which generated the notification.  In normal use, will be the same as modifiedGraphId.
+          type: string
         - name: lastChangeDate
           in: query
           required: true
           description: Timestamp of the change which generated this notification. The timestamp is formatted according to ISO 8601
+          type: string
+          format: date-time
       responses:
         200:
           description: When the message was successfully processed and the concept(s) added to Kafka.
@@ -120,7 +123,9 @@ paths:
       parameters:
         - name: uuid
           in: path
+          required: true
           description: UUID of concept to retrieve.
+          type: string
       responses:
         200:
           description: The concept was found in Smartlogic.
