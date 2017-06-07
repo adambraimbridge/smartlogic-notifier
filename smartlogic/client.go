@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -14,6 +16,7 @@ import (
 const propertiesQueryParamValue = "[],skosxl:prefLabel/skosxl:literalForm"
 const slTokenURL = "https://cloud.smartlogic.com/token"
 const maxAccessFailureCount = 5
+const thingURIPrefix = "http://www.ft.com/thing/"
 
 type httpClient interface {
 	Do(req *http.Request) (resp *http.Response, err error)
@@ -28,17 +31,20 @@ type Client struct {
 	accessFailureCount int
 }
 
-func NewSmartlogicClient(baseURL string, model string, apiKey string) (Client, error) {
-	u, _ := url.Parse(baseURL)
+func NewSmartlogicClient(httpClient httpClient, baseURL string, model string, apiKey string) (Client, error) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return Client{}, err
+	}
 
 	client := Client{
 		baseURL:    *u,
 		model:      model,
 		apiKey:     apiKey,
-		httpClient: &http.Client{},
+		httpClient: httpClient,
 	}
 
-	err := client.GenerateToken()
+	err = client.GenerateToken()
 	if err != nil {
 		return Client{}, err
 	}
@@ -62,6 +68,47 @@ func (c *Client) GetConcept(uuid string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
+	// path=tchmodel:FTSemanticPlayground/changes&since=2017-05-31T13:00:00.000Z&properties=[]
+	reqURL := c.baseURL
+	q := `path=tchmodel:` + c.model + `/changes&since=` + changeDate.Format("2006-01-02T15:04:05.000Z") + `&properties=[]`
+	reqURL.RawQuery = q
+
+	resp, err := c.MakeRequest("GET", reqURL.String())
+	if err != nil {
+		return nil, err
+	}
+
+	var graph Graph
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&graph)
+	if err != nil {
+		return nil, err
+	}
+
+	changedURIs := map[string]bool{}
+	for _, changeset := range graph.Changesets {
+		for _, v := range changeset.Concepts {
+			changedURIs[v.URI] = true
+		}
+	}
+
+	output := []string{}
+	for k := range changedURIs {
+		if uuid, ok := getUUIDfromValidURI(k); ok {
+			output = append(output, uuid)
+		}
+	}
+	return output, nil
+}
+
+func getUUIDfromValidURI(uri string) (string, bool) {
+	if strings.HasPrefix(uri, thingURIPrefix) {
+		return strings.TrimPrefix(uri, thingURIPrefix), true
+	}
+	return "", false
 }
 
 func (c *Client) MakeRequest(method, url string) (*http.Response, error) {

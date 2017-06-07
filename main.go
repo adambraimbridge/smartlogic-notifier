@@ -1,10 +1,12 @@
 package main
 
 import (
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Financial-Times/smartlogic-notifier/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/notifier"
@@ -13,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/sethgrid/pester"
 )
 
 const appDescription = "Entrypoint for concept publish notifications from the Smartlogic Semaphore system"
@@ -100,16 +103,16 @@ func main() {
 		if err != nil {
 			log.WithField("kafkaAddresses", *kafkaAddresses).WithField("kafkaTopic", *kafkaTopic).Fatalf("Error creating the Kafka producer.")
 		}
-		sl, err := smartlogic.NewSmartlogicClient(*smartlogicBaseURL, *smartlogicModel, *smartlogicAPIKey)
+		httpClient := getResilientClient()
+		sl, err := smartlogic.NewSmartlogicClient(httpClient, *smartlogicBaseURL, *smartlogicModel, *smartlogicAPIKey)
 		if err != nil {
 			log.Error("Error generating access token when connecting to Smartlogic.")
 			log.WithFields(log.Fields{})
 		}
 
-		//concept, _ := sl.GetConcept("2d3e16e0-61cb-4322-8aff-3b01c59f4daa")
-		//log.Info(string(concept))
+		service := notifier.NewNotifierService(kf, sl)
 
-		handler := notifier.NewNotifierHandler(kf, sl)
+		handler := notifier.NewNotifierHandler(service)
 		handler.RegisterAdminEndpoints(router, *appSystemCode, *appName, appDescription)
 		handler.RegisterEndpoints(router)
 
@@ -126,4 +129,24 @@ func waitForSignal() {
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	<-ch
+}
+
+func getResilientClient() *pester.Client {
+	c := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: 10,
+			MaxIdleConns:        10,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+		},
+		Timeout: 30 * time.Second,
+	}
+	client := pester.NewExtendedClient(c)
+	client.Backoff = pester.ExponentialBackoff
+	client.MaxRetries = 5
+	client.Concurrency = 1
+
+	return client
 }
