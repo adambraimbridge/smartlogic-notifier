@@ -9,6 +9,10 @@ import (
 	"net/url"
 	"testing"
 
+	"time"
+
+	"sort"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,7 +56,7 @@ func TestNewSmartlogicClient_Success(t *testing.T) {
 		}, "http://base/url", "modelName", "apiKey",
 	)
 	assert.NoError(t, err)
-	assert.EqualValues(t, tokenResponseValue, sl.accessToken)
+	assert.EqualValues(t, tokenResponseValue, sl.AccessToken())
 }
 
 func TestNewSmartlogicClient_BadURL(t *testing.T) {
@@ -83,7 +87,7 @@ func TestNewSmartlogicClient_NoToken(t *testing.T) {
 		}, "http://base/url", "modelName", "apiKey",
 	)
 	assert.NoError(t, err)
-	assert.EqualValues(t, "", sl.accessToken)
+	assert.EqualValues(t, "", sl.AccessToken())
 }
 
 func TestNewSmartlogicClient_BadResponse(t *testing.T) {
@@ -126,7 +130,7 @@ func TestClient_MakeRequest_Success(t *testing.T) {
 		}, "http://base/url", "modelName", "apiKey",
 	)
 
-	resp, err := sl.MakeRequest("GET", "http://a/url")
+	resp, err := sl.makeRequest("GET", "http://a/url")
 	assert.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -143,9 +147,9 @@ func TestClient_MakeRequest_Unauthorized(t *testing.T) {
 		}, "http://base/url", "modelName", "apiKey",
 	)
 
-	_, err = sl.MakeRequest("GET", "http://a/url")
+	_, err = sl.makeRequest("GET", "http://a/url")
 	assert.Error(t, err)
-	assert.EqualValues(t, errors.New("Failed to get a valid access token."), err)
+	assert.EqualValues(t, errors.New("Failed to get a valid access token"), err)
 }
 
 func TestClient_MakeRequest_DoError(t *testing.T) {
@@ -157,7 +161,7 @@ func TestClient_MakeRequest_DoError(t *testing.T) {
 		}, "http://base/url", "modelName", "apiKey",
 	)
 
-	_, err = sl.MakeRequest("GET", "http://a/url")
+	_, err = sl.makeRequest("GET", "http://a/url")
 	assert.Error(t, err)
 	assert.EqualValues(t, errors.New("Errorfield"), err)
 }
@@ -171,7 +175,7 @@ func TestClient_MakeRequest_RequestError(t *testing.T) {
 		}, "http://base/url", "modelName", "apiKey",
 	)
 
-	_, err = sl.MakeRequest("GET", "http:// a/url")
+	_, err = sl.makeRequest("GET", "http:// a/url")
 	assert.Error(t, err)
 	assert.EqualValues(t, "parse http:// a/url: invalid character \" \" in host name", err.Error())
 }
@@ -193,6 +197,62 @@ func TestClient_GetConcept_URLError(t *testing.T) {
 	assert.EqualValues(t, conceptResponse, concept)
 }
 
-func TestClient_GetChangedConceptList(t *testing.T) {
+func TestClient_GetChangedConceptList_Success(t *testing.T) {
+	conceptResponse, err := ioutil.ReadFile("../resources/get-changed-concepts.json")
 
+	sl, err := NewSmartlogicTestClient(
+		&mockHttpClient{
+			resp:       string(conceptResponse),
+			statusCode: 200,
+			err:        nil,
+		}, "http://base/url", "modelName", "apiKey",
+	)
+	assert.NoError(t, err)
+
+	response, err := sl.GetChangedConceptList(time.Now())
+	assert.NoError(t, err)
+
+	expectedResponse := []string{"testTypeMetadata", "fd55c1f0-6c5e-4869-aed4-6816836ffdb9"}
+
+	sort.Strings(expectedResponse)
+	sort.Strings(response)
+	assert.EqualValues(t, expectedResponse, response)
+}
+
+func TestClient_GetChangedConceptList_RequestError(t *testing.T) {
+	conceptResponse, err := ioutil.ReadFile("../resources/get-changed-concepts.json")
+
+	requestError := errors.New("anerror")
+
+	sl, err := NewSmartlogicTestClient(
+		&mockHttpClient{
+			resp:       string(conceptResponse),
+			statusCode: 200,
+			err:        requestError,
+		}, "http://base/url", "modelName", "apiKey",
+	)
+	assert.NoError(t, err)
+
+	response, err := sl.GetChangedConceptList(time.Now())
+	assert.Error(t, err)
+	assert.Equal(t, requestError, err)
+	assert.Empty(t, response)
+}
+
+func TestClient_GetChangedConceptList_BadResponseBody(t *testing.T) {
+	conceptResponse := "terrible body"
+
+	sl, err := NewSmartlogicTestClient(
+		&mockHttpClient{
+			resp:       string(conceptResponse),
+			statusCode: 200,
+			err:        nil,
+		}, "http://base/url", "modelName", "apiKey",
+	)
+	assert.NoError(t, err)
+
+	response, err := sl.GetChangedConceptList(time.Now())
+	assert.Error(t, err)
+	assert.IsType(t, &json.SyntaxError{}, err)
+	assert.Empty(t, response)
 }

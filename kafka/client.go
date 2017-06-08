@@ -4,7 +4,12 @@ import (
 	"strings"
 
 	"github.com/Shopify/sarama"
+	log "github.com/Sirupsen/logrus"
 )
+
+type Clienter interface {
+	SendMessage(message FTMessage) error
+}
 
 type Client struct {
 	brokers  []string
@@ -12,7 +17,7 @@ type Client struct {
 	producer sarama.SyncProducer
 }
 
-func NewKafkaClient(brokers string, topic string) (Client, error) {
+func NewKafkaClient(brokers string, topic string) (Clienter, error) {
 	brokerSlice := strings.Split(brokers, ",")
 	config := sarama.NewConfig()
 	config.Producer.RequiredAcks = sarama.WaitForAll
@@ -22,10 +27,11 @@ func NewKafkaClient(brokers string, topic string) (Client, error) {
 
 	sp, err := sarama.NewSyncProducer(brokerSlice, config)
 	if err != nil {
-		return Client{}, err
+		log.WithError(err).WithField("method", "NewKafkaClient").Error("Error creating the producer")
+		return &Client{}, err
 	}
 
-	return Client{
+	return &Client{
 		brokers:  brokerSlice,
 		topic:    topic,
 		producer: sp,
@@ -37,6 +43,8 @@ func (c *Client) SendMessage(message FTMessage) error {
 		Topic: c.topic,
 		Value: sarama.StringEncoder(message.Build()),
 	})
-
+	if err != nil {
+		log.WithError(err).WithField("method", "SendMessage").Error("Error sending a Kafka message")
+	}
 	return err
 }

@@ -22,6 +22,12 @@ type httpClient interface {
 	Do(req *http.Request) (resp *http.Response, err error)
 }
 
+type Clienter interface {
+	GetConcept(uuid string) ([]byte, error)
+	GetChangedConceptList(changeDate time.Time) ([]string, error)
+	AccessToken() string
+}
+
 type Client struct {
 	baseURL            url.URL
 	model              string
@@ -31,10 +37,10 @@ type Client struct {
 	accessFailureCount int
 }
 
-func NewSmartlogicClient(httpClient httpClient, baseURL string, model string, apiKey string) (Client, error) {
+func NewSmartlogicClient(httpClient httpClient, baseURL string, model string, apiKey string) (Clienter, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
-		return Client{}, err
+		return &Client{}, err
 	}
 
 	client := Client{
@@ -46,9 +52,13 @@ func NewSmartlogicClient(httpClient httpClient, baseURL string, model string, ap
 
 	err = client.GenerateToken()
 	if err != nil {
-		return Client{}, err
+		return &Client{}, err
 	}
-	return client, nil
+	return &client, nil
+}
+
+func (c *Client) AccessToken() string {
+	return c.accessToken
 }
 
 func (c *Client) GetConcept(uuid string) ([]byte, error) {
@@ -56,14 +66,16 @@ func (c *Client) GetConcept(uuid string) ([]byte, error) {
 	q := "path=" + buildConceptPath(c.model, uuid) + "&properties=" + propertiesQueryParamValue
 	reqURL.RawQuery = q
 
-	resp, err := c.MakeRequest("GET", reqURL.String())
+	resp, err := c.makeRequest("GET", reqURL.String())
 	if err != nil {
+		log.WithError(err).WithField("method", "GetConcept").Error("Error creating the request")
 		return []byte{}, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		log.WithError(err).WithField("method", "GetConcept").Error("Error reading the response body")
 		return []byte{}, err
 	}
 
@@ -76,8 +88,9 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 	q := `path=tchmodel:` + c.model + `/changes&since=` + changeDate.Format("2006-01-02T15:04:05.000Z") + `&properties=[]`
 	reqURL.RawQuery = q
 
-	resp, err := c.MakeRequest("GET", reqURL.String())
+	resp, err := c.makeRequest("GET", reqURL.String())
 	if err != nil {
+		log.WithError(err).WithField("method", "GetChangedConceptList").Error("Error creating the request")
 		return nil, err
 	}
 
@@ -85,6 +98,7 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&graph)
 	if err != nil {
+		log.WithError(err).WithField("method", "GetChangedConceptList").Error("Error decoding the response body")
 		return nil, err
 	}
 
@@ -111,20 +125,23 @@ func getUUIDfromValidURI(uri string) (string, bool) {
 	return "", false
 }
 
-func (c *Client) MakeRequest(method, url string) (*http.Response, error) {
+func (c *Client) makeRequest(method, url string) (*http.Response, error) {
 	if c.accessFailureCount >= maxAccessFailureCount {
 		// We've failed to get a valid access token multiple times in a row, so just error out.
-		return nil, errors.New("Failed to get a valid access token.")
+		log.WithField("method", "makeRequest").Error("Failed to get a valid access token")
+		return nil, errors.New("Failed to get a valid access token")
 	}
 
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
+		log.WithError(err).WithField("method", "makeRequest").Error("Error creating the request")
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.accessToken)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		log.WithError(err).WithField("method", "makeRequest").Error("Error making the request")
 		return resp, err
 	}
 
@@ -134,7 +151,7 @@ func (c *Client) MakeRequest(method, url string) (*http.Response, error) {
 		resp.Body.Close()
 		c.accessFailureCount++
 		c.GenerateToken()
-		return c.MakeRequest(method, url)
+		return c.makeRequest(method, url)
 	}
 	c.accessFailureCount = 0
 	return resp, err
@@ -158,11 +175,13 @@ func (c *Client) GenerateToken() error {
 	req, err := http.NewRequest("POST", slTokenURL, bytes.NewBufferString(data.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err != nil {
+		log.WithError(err).WithField("method", "GenerateToken").Error("Error creating the request")
 		return err
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		log.WithError(err).WithField("method", "GenerateToken").Error("Error making the request")
 		return err
 	}
 
@@ -172,6 +191,7 @@ func (c *Client) GenerateToken() error {
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(&tokenResponse)
 	if err != nil {
+		log.WithError(err).WithField("method", "GenerateToken").Error("Error decoding the response body")
 		return err
 	}
 

@@ -1,15 +1,15 @@
 package notifier
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
-	"encoding/json"
+	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/http-handlers-go/httphandlers"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
-	"github.com/Financial-Times/smartlogic-notifier/health"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -17,10 +17,10 @@ import (
 )
 
 type Handler struct {
-	notifier *Service
+	notifier Servicer
 }
 
-func NewNotifierHandler(notifier *Service) *Handler {
+func NewNotifierHandler(notifier Servicer) *Handler {
 	return &Handler{
 		notifier: notifier,
 	}
@@ -46,10 +46,13 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		writeJSONResponseMessage(resp, 400, `Query parameters were not set: `+strings.Join(notSet, ", "))
 		return
 	}
+	lastChange, err := time.Parse("2006-01-02T15:04:05.000Z", lastChangeDate)
+	if err != nil {
+		writeResponseMessage(resp, 400, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
+		return
+	}
 
-	log.Debugf("lastChangeDate: %v", lastChangeDate)
-	err := h.notifier.Notify(lastChangeDate)
-	log.Debugf("error: %v", err)
+	err = h.notifier.Notify(lastChange)
 	if err != nil {
 		writeResponseMessage(resp, 500, "application/json", `{"message": "There was an error completing the notify", "error": "`+err.Error()+`"}`)
 		return
@@ -64,7 +67,11 @@ func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request)
 	}
 	var pl payload
 	decoder := json.NewDecoder(req.Body)
-	decoder.Decode(&pl)
+	err := decoder.Decode(&pl)
+	if err != nil {
+		writeResponseMessage(resp, 400, "application/json", `{"message": "There was an error decoding the payload", "error": "`+err.Error()+`"}`)
+		return
+	}
 
 	h.notifier.ForceNotify(pl.UUIDs)
 }
@@ -103,7 +110,7 @@ func (h *Handler) RegisterEndpoints(router *mux.Router) {
 }
 
 func (h *Handler) RegisterAdminEndpoints(router *mux.Router, appSystemCode string, appName string, description string) {
-	healthService := health.NewHealthService(appSystemCode, appName, description)
+	healthService := NewHealthService(h.notifier, appSystemCode, appName, description)
 
 	hc := fthealth.HealthCheck{SystemCode: appSystemCode, Name: appName, Description: description, Checks: healthService.Checks}
 	router.HandleFunc("/__health", fthealth.Handler(hc))

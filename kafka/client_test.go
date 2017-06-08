@@ -29,8 +29,6 @@ func Test_NewKafkaClient_BrokerError(t *testing.T) {
 	_, err := NewKafkaClient(testBrokers, testTopic)
 
 	assert.Error(t, err)
-	//assert.EqualValues(t, []string{"test1:1", "test2:2"}, k.brokers)
-	//assert.EqualValues(t, testTopicName, k.topic)
 }
 
 func TestClient_SendMessage(t *testing.T) {
