@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Financial-Times/smartlogic-notifier/kafka"
+	"github.com/Financial-Times/kafka-client-go/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
 	log "github.com/Sirupsen/logrus"
 )
@@ -17,11 +17,11 @@ type Servicer interface {
 }
 
 type Service struct {
-	kafka      kafka.Clienter
+	kafka      kafka.Producer
 	smartlogic smartlogic.Clienter
 }
 
-func NewNotifierService(kafka kafka.Clienter, smartlogic smartlogic.Clienter) Servicer {
+func NewNotifierService(kafka kafka.Producer, smartlogic smartlogic.Clienter) Servicer {
 	return &Service{
 		kafka:      kafka,
 		smartlogic: smartlogic,

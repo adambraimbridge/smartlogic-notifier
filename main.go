@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Financial-Times/smartlogic-notifier/kafka"
+	"github.com/Financial-Times/kafka-client-go/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/notifier"
 	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
 	log "github.com/Sirupsen/logrus"
@@ -21,6 +21,7 @@ import (
 const appDescription = "Entrypoint for concept publish notifications from the Smartlogic Semaphore system"
 
 func main() {
+
 	app := cli.App("smartlogic-notifier", appDescription)
 
 	appSystemCode := app.String(cli.StringOpt{
@@ -99,7 +100,7 @@ func main() {
 			}
 		}()
 
-		kf, err := kafka.NewKafkaClient(*kafkaAddresses, *kafkaTopic)
+		kf, err := kafka.NewProducer(*kafkaAddresses, *kafkaTopic)
 		if err != nil {
 			log.WithField("kafkaAddresses", *kafkaAddresses).WithField("kafkaTopic", *kafkaTopic).Fatalf("Error creating the Kafka producer.")
 		}
