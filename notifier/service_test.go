@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Financial-Times/smartlogic-notifier/kafka"
+	"github.com/Financial-Times/kafka-client-go/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
 	"github.com/stretchr/testify/assert"
 )
