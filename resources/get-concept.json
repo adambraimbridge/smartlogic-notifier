@@ -1,0 +1,113 @@
+{
+  "@graph": [
+    {
+      "@id": "http://www.ft.com/thing/2d3e16e0-61cb-4322-8aff-3b01c59f4daa",
+      "@type": [
+        "http://www.ft.com/ontology/product/Brand"
+      ],
+      "http://www.ft.com/ontology/TMEIdentifier": [
+        {
+          "@value": "YzhlNzZkYTctMDJiNy00NTViLTk3NmYtNmJjYTE5NDEyM2Yw-QnJhbmRz"
+        }
+      ],
+      "http://www.ft.com/ontology/_logoURL": [
+        {
+          "@value": "http://im.ft-static.com/content/images/d5ffade2-99ea-11e6-8f9b-70e3cabccfae.png"
+        }
+      ],
+      "http://www.ft.com/ontology/description": [
+        {
+          "@language": "en",
+          "@value": "<p>Lex is a premium daily commentary service from the Financial Times. It is the oldest and arguably the most influential business and finance column of its kind in the world. It helps readers make better investment decisions by highlighting key emerging risks and opportunities.</p>"
+        }
+      ],
+      "http://www.ft.com/ontology/hasSubBrand": [
+        {
+          "@id": "http://www.ft.com/thing/e363dfb8-f6d9-4f2c-beba-5162b334272b"
+        }
+      ],
+      "http://www.ft.com/ontology/strapline": [
+        {
+          "@language": "en",
+          "@value": "FT's agenda-setting column on business and finance"
+        }
+      ],
+      "http://www.ft.com/ontology/subBrandOf": [
+        {
+          "@id": "http://www.ft.com/thing/dbb0bdae-1f0c-11e4-b0cb-b2227cce2b54"
+        }
+      ],
+      "sem:guid": [
+        {
+          "@value": "2d3e16e0-61cb-4322-8aff-3b01c59f4daa"
+        }
+      ],
+      "skosxl:prefLabel": [
+        {
+          "@id": "http://www.ft.com/thing/2d3e16e0-61cb-4322-8aff-3b01c59f4daa/Lex_en",
+          "skosxl:literalForm": [
+            {
+              "@language": "en",
+              "@value": "Lex"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "@context": {
+    "@language": "",
+    "model": "urn:x-evn-master:",
+    "tchmodel": "urn:x-evn-tch-union:",
+    "task": "urn:x-ort-tag:",
+    "user": "urn:x-tb-users:",
+    "role": "urn:x-tb-role:",
+    "tag": "urn:x-tags:",
+    "evnimport": "urn:x-tb:evnimport#",
+    "meta": "http://www.smartlogic.com/2014/10/semaphore-meta#",
+    "sys": "http://www.smartlogic.com/2014/10/semaphore-sys#",
+    "sem": "http://www.smartlogic.com/2014/08/semaphore-core#",
+    "semlang": "http://www.smartlogic.com/2015/03/semaphore-languages#",
+    "semfun": "http://www.smartlogic.com/2015/02/semaphore-functions#",
+    "semspin": "http://www.smartlogic.com/2015/02/semaphore-spin-functions#",
+    "semspinmap": "http://www.smartlogic.com/2016/04/semaphore-spinMap#",
+    "semutils": "http://www.smartlogic.com/2015/09/semaphore-utils#",
+    "sempermissions": "http://www.smartlogic.com/2015/11/semaphore-permissions#",
+    "semwidgets": "http://www.smartlogic.com/2016/02/semaphore-widgets#",
+    "semlisteners": "http://www.smartlogic.com/2016/10/semaphore-listeners#",
+    "semtemplates": "http://www.smartlogic.com/2016/04/semaphore-templates#",
+    "teamworkrulesx": "http://www.smartlogic.com/2016/05/semaphore-teamworkrulesx#",
+    "semvar": "http://www.smartlogic.com/2015/10/semaphore-var#",
+    "sempath": "http://www.smartlogic.com/2016/01/semaphore-path#",
+    "example": "http://proto.smartlogic.com/example#",
+    "smf": "http://topbraid.org/sparqlmotionfunctions#",
+    "teamwork": "http://topbraid.org/teamwork#",
+    "swa": "http://topbraid.org/swa#",
+    "tables": "http://topbraid.org/tables#",
+    "spinmap": "http://spinrdf.org/spinmap#",
+    "spl": "http://spinrdf.org/spl#",
+    "afn": "http://jena.hpl.hp.com/ARQ/function#",
+    "ui": "http://uispin.org/ui#",
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    "fn": "http://www.w3.org/2005/xpath-functions#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "skosxl": "http://www.w3.org/2008/05/skos-xl#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "sioc": "http://rdfs.org/sioc/ns#",
+    "dc": "http://purl.org/dc/elements/1.1/",
+    "dcterms": "http://purl.org/dc/terms/",
+    "lang": "http://id.loc.gov/vocabulary/iso639-1/",
+    "spif": "http://spinrdf.org/spif#",
+    "sys:Model": "owl:Ontology",
+    "sys:Task": "teamwork:Tag",
+    "graph:teamwork": "http://topbraid.org/teamwork",
+    "graph:users": "http://server.topbraidlive.org/dynamic/users",
+    "graph:sempermissions": "http://www.smartlogic.com/2015/11/semaphore-permissions",
+    "meta:transitiveType": {
+      "@type": "@id"
+    }
+  }
+}

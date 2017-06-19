@@ -1,0 +1,231 @@
+{
+  "@graph": [
+    {
+      "@id": "urn:x-change:2017-06-06T14-36-28.971Zderek.kettlety@ft.com",
+      "@type": [
+        "teamwork:Change"
+      ],
+      "dcterms:created": [
+        {
+          "@type": "xsd:dateTime",
+          "@value": "2017-06-06T14:36:28.971Z"
+        }
+      ],
+      "sioc:has_creator": [
+        {
+          "@id": "user:derek.kettlety%40ft.com"
+        }
+      ],
+      "teamwork:deleted": [
+        {
+          "@id": "_:b89",
+          "teamwork:object": [
+            {
+              "@id": "owl:DatatypeProperty"
+            }
+          ],
+          "teamwork:predicate": [
+            {
+              "@id": "rdf:type"
+            }
+          ],
+          "teamwork:subject": [
+            {
+              "@id": "http://www.ft.com/thing/testTypeMetadata"
+            }
+          ]
+        },
+        {
+          "@id": "_:b21",
+          "teamwork:object": [
+            {
+              "@language": "en",
+              "@value": "testTypeMetadata"
+            }
+          ],
+          "teamwork:predicate": [
+            {
+              "@id": "rdfs:label"
+            }
+          ],
+          "teamwork:subject": [
+            {
+              "@id": "http://www.ft.com/thing/testTypeMetadata"
+            }
+          ]
+        },
+        {
+          "@id": "_:b58",
+          "teamwork:object": [
+            {
+              "@id": "xsd:string"
+            }
+          ],
+          "teamwork:predicate": [
+            {
+              "@id": "rdfs:range"
+            }
+          ],
+          "teamwork:subject": [
+            {
+              "@id": "http://www.ft.com/thing/testTypeMetadata"
+            }
+          ]
+        },
+        {
+          "@id": "_:b72",
+          "teamwork:object": [
+            {
+              "@id": "skos:Concept"
+            }
+          ],
+          "teamwork:predicate": [
+            {
+              "@id": "rdfs:domain"
+            }
+          ],
+          "teamwork:subject": [
+            {
+              "@id": "http://www.ft.com/thing/testTypeMetadata"
+            }
+          ]
+        }
+      ],
+      "teamwork:status": [
+        {
+          "@id": "teamwork:Committed"
+        }
+      ],
+      "sem:about": [
+        {
+          "@id": "http://www.ft.com/thing/testTypeMetadata"
+        }
+      ],
+      "sem:committed": [
+        {
+          "@type": "xsd:dateTime",
+          "@value": "2017-06-06T14:36:28.971Z"
+        }
+      ],
+      "rdfs:comment": [
+        {
+          "@value": "{\"templateKey\":\"model-structure-metadata-deleted\",\"params\":[]}"
+        }
+      ]
+    },
+    {
+      "@id": "urn:x-change:2017-06-06T14-42-11.884Zderek.kettlety@ft.com",
+      "@type": [
+        "teamwork:Change"
+      ],
+      "dcterms:created": [
+        {
+          "@type": "xsd:dateTime",
+          "@value": "2017-06-06T14:42:11.884Z"
+        }
+      ],
+      "sioc:has_creator": [
+        {
+          "@id": "user:derek.kettlety%40ft.com"
+        }
+      ],
+      "teamwork:added": [
+        {
+          "@id": "_:b69",
+          "teamwork:object": [
+            {
+              "@language": "en",
+              "@value": "ZDIzYmQzNjgtYzAzMS00MDg3LTg3MTEtMDUyZTZkZTkzMTc4-QnJhbmRz"
+            }
+          ],
+          "teamwork:predicate": [
+            {
+              "@id": "http://www.ft.com/ontology/TMEIdentifier"
+            }
+          ],
+          "teamwork:subject": [
+            {
+              "@id": "http://www.ft.com/thing/fd55c1f0-6c5e-4869-aed4-6816836ffdb9"
+            }
+          ]
+        }
+      ],
+      "teamwork:status": [
+        {
+          "@id": "teamwork:Committed"
+        }
+      ],
+      "sem:about": [
+        {
+          "@id": "http://www.ft.com/thing/fd55c1f0-6c5e-4869-aed4-6816836ffdb9"
+        }
+      ],
+      "sem:committed": [
+        {
+          "@type": "xsd:dateTime",
+          "@value": "2017-06-06T14:42:11.884Z"
+        }
+      ],
+      "rdfs:comment": [
+        {
+          "@value": "{\"templateKey\":\"metadata-added\",\"params\":[\"\\\"ZDIzYmQzNjgtYzAzMS00MDg3LTg3MTEtMDUyZTZkZTkzMTc4-QnJhbmRz@en\\\"\",\"\",1,\"TMEIdentifier\",0,\"\",\"\\\"null\\\"\"]}"
+        }
+      ]
+    }
+  ],
+  "@context": {
+    "@language": "",
+    "model": "urn:x-evn-master:",
+    "tchmodel": "urn:x-evn-tch-union:",
+    "task": "urn:x-ort-tag:",
+    "user": "urn:x-tb-users:",
+    "role": "urn:x-tb-role:",
+    "tag": "urn:x-tags:",
+    "evnimport": "urn:x-tb:evnimport#",
+    "meta": "http://www.smartlogic.com/2014/10/semaphore-meta#",
+    "sys": "http://www.smartlogic.com/2014/10/semaphore-sys#",
+    "sem": "http://www.smartlogic.com/2014/08/semaphore-core#",
+    "semlang": "http://www.smartlogic.com/2015/03/semaphore-languages#",
+    "semfun": "http://www.smartlogic.com/2015/02/semaphore-functions#",
+    "semspin": "http://www.smartlogic.com/2015/02/semaphore-spin-functions#",
+    "semspinmap": "http://www.smartlogic.com/2016/04/semaphore-spinMap#",
+    "semutils": "http://www.smartlogic.com/2015/09/semaphore-utils#",
+    "sempermissions": "http://www.smartlogic.com/2015/11/semaphore-permissions#",
+    "semwidgets": "http://www.smartlogic.com/2016/02/semaphore-widgets#",
+    "semlisteners": "http://www.smartlogic.com/2016/10/semaphore-listeners#",
+    "semtemplates": "http://www.smartlogic.com/2016/04/semaphore-templates#",
+    "teamworkrulesx": "http://www.smartlogic.com/2016/05/semaphore-teamworkrulesx#",
+    "semvar": "http://www.smartlogic.com/2015/10/semaphore-var#",
+    "sempath": "http://www.smartlogic.com/2016/01/semaphore-path#",
+    "example": "http://proto.smartlogic.com/example#",
+    "smf": "http://topbraid.org/sparqlmotionfunctions#",
+    "teamwork": "http://topbraid.org/teamwork#",
+    "swa": "http://topbraid.org/swa#",
+    "tables": "http://topbraid.org/tables#",
+    "spinmap": "http://spinrdf.org/spinmap#",
+    "spl": "http://spinrdf.org/spl#",
+    "afn": "http://jena.hpl.hp.com/ARQ/function#",
+    "ui": "http://uispin.org/ui#",
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    "fn": "http://www.w3.org/2005/xpath-functions#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "skosxl": "http://www.w3.org/2008/05/skos-xl#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "sioc": "http://rdfs.org/sioc/ns#",
+    "dc": "http://purl.org/dc/elements/1.1/",
+    "dcterms": "http://purl.org/dc/terms/",
+    "lang": "http://id.loc.gov/vocabulary/iso639-1/",
+    "spif": "http://spinrdf.org/spif#",
+    "sys:Model": "owl:Ontology",
+    "sys:Task": "teamwork:Tag",
+    "graph:teamwork": "http://topbraid.org/teamwork",
+    "graph:users": "http://server.topbraidlive.org/dynamic/users",
+    "graph:sempermissions": "http://www.smartlogic.com/2015/11/semaphore-permissions",
+    "meta:transitiveType": {
+      "@type": "@id"
+    }
+  }
+}
