@@ -13,7 +13,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
 )
 
 type Handler struct {
@@ -47,6 +47,7 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	lastChange, err := time.Parse("2006-01-02T15:04:05.000Z", lastChangeDate)
+	lastChange = lastChange.Add(-1 * time.Second)
 	if err != nil {
 		writeResponseMessage(resp, 400, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
 		return

@@ -61,10 +61,10 @@ func (s *Service) ForceNotify(UUIDs []string) error {
 	}
 
 	if len(errorMap) > 0 {
-		errorMsg := fmt.Sprintf("There was an error with %d concept ingestions.", len(errorMap))
+		errorMsg := fmt.Sprintf("There was an error with %d concept ingestions", len(errorMap))
 		log.WithField("errorMap", errorMap).Error(errorMsg)
 		return errors.New(errorMsg)
 	}
-
+	log.WithField("uuids", UUIDs).Info("Completed notification of concepts")
 	return nil
 }
