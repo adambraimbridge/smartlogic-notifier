@@ -94,11 +94,6 @@ func main() {
 		log.Infof("System code: %s, App Name: %s, Port: %s", *appSystemCode, *appName, *port)
 
 		router := mux.NewRouter()
-		go func() {
-			if err := http.ListenAndServe(":"+*port, router); err != nil {
-				log.Fatalf("Unable to start: %v", err)
-			}
-		}()
 
 		kf, err := kafka.NewProducer(*kafkaAddresses, *kafkaTopic)
 		if err != nil {
@@ -114,8 +109,14 @@ func main() {
 		service := notifier.NewNotifierService(kf, sl)
 
 		handler := notifier.NewNotifierHandler(service)
-		handler.RegisterAdminEndpoints(router, *appSystemCode, *appName, appDescription)
 		handler.RegisterEndpoints(router)
+		monitoringRouter := handler.RegisterAdminEndpoints(router, *appSystemCode, *appName, appDescription)
+
+		go func() {
+			if err := http.ListenAndServe(":"+*port, monitoringRouter); err != nil {
+				log.Fatalf("Unable to start: %v", err)
+			}
+		}()
 
 		waitForSignal()
 	}

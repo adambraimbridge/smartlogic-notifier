@@ -47,7 +47,7 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	lastChange, err := time.Parse("2006-01-02T15:04:05.000Z", lastChangeDate)
-	lastChange = lastChange.Add(-1 * time.Second)
+	lastChange = lastChange.Add(-10 * time.Millisecond)
 	if err != nil {
 		writeResponseMessage(resp, 400, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
 		return
@@ -110,7 +110,7 @@ func (h *Handler) RegisterEndpoints(router *mux.Router) {
 	router.Handle("/concept/{uuid}", getConceptHandler)
 }
 
-func (h *Handler) RegisterAdminEndpoints(router *mux.Router, appSystemCode string, appName string, description string) {
+func (h *Handler) RegisterAdminEndpoints(router *mux.Router, appSystemCode string, appName string, description string) http.Handler {
 	healthService := NewHealthService(h.notifier, appSystemCode, appName, description)
 
 	hc := fthealth.HealthCheck{SystemCode: appSystemCode, Name: appName, Description: description, Checks: healthService.Checks}
@@ -121,6 +121,8 @@ func (h *Handler) RegisterAdminEndpoints(router *mux.Router, appSystemCode strin
 	var monitoringRouter http.Handler = router
 	monitoringRouter = httphandlers.TransactionAwareRequestLoggingHandler(log.StandardLogger(), monitoringRouter)
 	monitoringRouter = httphandlers.HTTPMetricsHandler(metrics.DefaultRegistry, monitoringRouter)
+
+	return monitoringRouter
 }
 
 func writeResponseMessage(w http.ResponseWriter, statusCode int, contentType string, message string) {
