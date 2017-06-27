@@ -89,7 +89,7 @@ func TestHandlers(t *testing.T) {
 			"/force-notify",
 			`{"uuids": ["1","2","3"]}`,
 			200,
-			"",
+			"Concept notification completed",
 			nil,
 			map[string]string{
 				"1": "1",

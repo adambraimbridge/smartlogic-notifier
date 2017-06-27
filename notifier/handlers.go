@@ -43,51 +43,59 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	if len(notSet) > 0 {
-		writeJSONResponseMessage(resp, 400, `Query parameters were not set: `+strings.Join(notSet, ", "))
+		writeJSONResponseMessage(resp, http.StatusBadRequest, `Query parameters were not set: `+strings.Join(notSet, ", "))
 		return
 	}
-	lastChange, err := time.Parse("2006-01-02T15:04:05.000Z", lastChangeDate)
+	lastChange, err := time.Parse("2006-01-02T15:04:05Z", lastChangeDate)
+	log.WithField("time", lastChange).Debug("Parsing notification time")
 	lastChange = lastChange.Add(-10 * time.Millisecond)
+	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
 	if err != nil {
-		writeResponseMessage(resp, 400, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
+		writeResponseMessage(resp, http.StatusBadRequest, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
 		return
 	}
 
 	err = h.notifier.Notify(lastChange)
 	if err != nil {
-		writeResponseMessage(resp, 500, "application/json", `{"message": "There was an error completing the notify", "error": "`+err.Error()+`"}`)
+		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error completing the notify", "error": "`+err.Error()+`"}`)
 		return
 	}
 
-	writeJSONResponseMessage(resp, 200, "Messages successfully sent to Kafka")
+	writeJSONResponseMessage(resp, http.StatusOK, "Messages successfully sent to Kafka")
 }
 
 func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request) {
 	type payload struct {
-		UUIDs []string `json:"uuids"`
+		UUIDs []string `json:"uuids,omitempty"`
 	}
 	var pl payload
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&pl)
 	if err != nil {
-		writeResponseMessage(resp, 400, "application/json", `{"message": "There was an error decoding the payload", "error": "`+err.Error()+`"}`)
+		writeResponseMessage(resp, http.StatusBadRequest, "application/json", `{"message": "There was an error decoding the payload", "error": "`+err.Error()+`"}`)
+		return
+	}
+
+	if pl.UUIDs == nil {
+		writeJSONResponseMessage(resp, http.StatusBadRequest, "No 'uuids' parameter provided")
 		return
 	}
 
 	h.notifier.ForceNotify(pl.UUIDs)
+	writeResponseMessage(resp, http.StatusOK, "text/plain", "Concept notification completed")
 }
 
 func (h *Handler) HandleGetConcept(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid, ok := vars["uuid"]
 	if !ok {
-		writeJSONResponseMessage(resp, 400, "UUID was not set.")
+		writeJSONResponseMessage(resp, http.StatusBadRequest, "UUID was not set.")
 		return
 	}
 
 	concept, err := h.notifier.GetConcept(uuid)
 	if err != nil {
-		writeResponseMessage(resp, 500, "application/json", `{"message": "There was an error retrieving the concept", "error": "`+err.Error()+`"}`)
+		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error retrieving the concept", "error": "`+err.Error()+`"}`)
 		return
 	}
 	resp.Header().Set("Content-Type", "application/ld+json")
