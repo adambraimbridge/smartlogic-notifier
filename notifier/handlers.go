@@ -14,7 +14,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rcrowley/go-metrics"
-	"fmt"
 )
 
 type Handler struct {
