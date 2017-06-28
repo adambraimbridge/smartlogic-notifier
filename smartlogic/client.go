@@ -85,11 +85,8 @@ func (c *Client) GetConcept(uuid string) ([]byte, error) {
 func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 	// path=tchmodel:FTSemanticPlayground/changes&since=2017-05-31T13:00:00.000Z&properties=[]
 	reqURL := c.baseURL
-	log.WithField("changeDate", changeDate).Debug("Constructing URL")
 	q := `path=tchmodel:` + c.model + `/changes&since=` + changeDate.Format("2006-01-02T15:04:05.000Z") + `&properties=[]`
 	reqURL.RawQuery = q
-
-	log.WithField("url", q).Debug("Constructed Url")
 
 	resp, err := c.makeRequest("GET", reqURL.String())
 	if err != nil {
@@ -104,7 +101,6 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 		log.WithError(err).WithField("method", "GetChangedConceptList").Error("Error decoding the response body")
 		return nil, err
 	}
-	log.WithField("changeSets", graph).Debug("Change Sets are")
 
 	changedURIs := map[string]bool{}
 	for _, changeset := range graph.Changesets {
@@ -112,7 +108,6 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 			changedURIs[v.URI] = true
 		}
 	}
-	log.WithField("changedUris", graph).Debug("Changed Uris")
 
 	output := []string{}
 	for k := range changedURIs {
@@ -120,7 +115,6 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 			output = append(output, uuid)
 		}
 	}
-	log.WithField("output", graph).Debug("Output")
 	return output, nil
 }
 
@@ -144,9 +138,6 @@ func (c *Client) makeRequest(method, url string) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.accessToken)
-
-
-	log.WithField("request", req).Debug("Request to smartlogic")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
