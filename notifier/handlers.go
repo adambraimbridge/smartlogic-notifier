@@ -49,14 +49,14 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 
 	lastChange, err := time.Parse("2006-01-02T15:04:05Z", lastChangeDate)
 	log.WithField("time", lastChange).Debug("Parsing notification time")
-	lastChange = lastChange.Add(-2 * time.Second)
-	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
+	modifiedTime := lastChange.Add(-2 * time.Second)
+	log.WithField("time", modifiedTime).Debug("Subtracting notification time wobble")
 	if err != nil {
 		writeResponseMessage(resp, http.StatusBadRequest, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
 		return
 	}
 
-	err = h.notifier.Notify(lastChange)
+	err = h.notifier.Notify(modifiedTime)
 	if err != nil {
 		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error completing the notify", "error": "`+err.Error()+`"}`)
 		return
