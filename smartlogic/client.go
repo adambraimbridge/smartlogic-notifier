@@ -13,7 +13,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-const propertiesQueryParamValue = "[],skosxl:prefLabel/skosxl:literalForm"
+const propertiesQueryParamValue = "[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm"
 const slTokenURL = "https://cloud.smartlogic.com/token"
 const maxAccessFailureCount = 5
 const thingURIPrefix = "http://www.ft.com/thing/"
