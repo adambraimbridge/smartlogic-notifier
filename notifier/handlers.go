@@ -27,6 +27,9 @@ func NewNotifierHandler(notifier Servicer) *Handler {
 }
 
 func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
+	log.Debug("Request received, sleeping for 10 seconds")
+	time.Sleep(time.Duration(time.Second * 10))
+
 	vars := req.URL.Query()
 	var notSet []string
 	modifiedGraphId := vars.Get("modifiedGraphId")
