@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rcrowley/go-metrics"
+	"fmt"
 )
 
 type Handler struct {
@@ -47,15 +48,15 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	lastChange, err := time.Parse("2006-01-02T15:04:05Z", lastChangeDate)
-	log.WithField("time", lastChange).Debug("Parsing notification time")
+	lastChange, err := time.Parse("2006-01-02T15:04:05.000Z", lastChangeDate)
+	log.WithField("time1", lastChange).Debug("Parsing notification time")
 	modifiedTime := lastChange.Add(-2 * time.Second)
-	log.WithField("time", modifiedTime).Debug("Subtracting notification time wobble")
+	log.WithField("time1", modifiedTime).Debug("Subtracting notification time wobble")
 	if err != nil {
 		writeResponseMessage(resp, http.StatusBadRequest, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
 		return
 	}
-
+	fmt.Printf("Modified time is %s\n", modifiedTime)
 	err = h.notifier.Notify(modifiedTime)
 	if err != nil {
 		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error completing the notify", "error": "`+err.Error()+`"}`)

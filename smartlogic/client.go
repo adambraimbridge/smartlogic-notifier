@@ -11,6 +11,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"fmt"
 )
 
 const propertiesQueryParamValue = "[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm"
@@ -85,8 +86,11 @@ func (c *Client) GetConcept(uuid string) ([]byte, error) {
 func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 	// path=tchmodel:FTSemanticPlayground/changes&since=2017-05-31T13:00:00.000Z&properties=[]
 	reqURL := c.baseURL
+	fmt.Printf("Final date/time is %s\n", changeDate.Format("2006-01-02T15:04:05.000Z"))
 	q := `path=tchmodel:` + c.model + `/changes&since=` + changeDate.Format("2006-01-02T15:04:05.000Z") + `&properties=[]`
 	reqURL.RawQuery = q
+
+	fmt.Printf("Resutling query is %s\n", q)
 
 	resp, err := c.makeRequest("GET", reqURL.String())
 	if err != nil {
