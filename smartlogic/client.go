@@ -86,7 +86,6 @@ func (c *Client) GetConcept(uuid string) ([]byte, error) {
 func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 	// path=tchmodel:FTSemanticPlayground/changes&since=2017-05-31T13:00:00.000Z&properties=[]
 	reqURL := c.baseURL
-	fmt.Printf("Final date/time is %s\n", changeDate.Format("2006-01-02T15:04:05.000Z"))
 	q := `path=tchmodel:` + c.model + `/changes&since=` + changeDate.Format("2006-01-02T15:04:05.000Z") + `&properties=[]`
 	reqURL.RawQuery = q
 
@@ -105,6 +104,7 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 		log.WithError(err).WithField("method", "GetChangedConceptList").Error("Error decoding the response body")
 		return nil, err
 	}
+	fmt.Printf("Changesets are %s\n", graph)
 
 	changedURIs := map[string]bool{}
 	for _, changeset := range graph.Changesets {
@@ -112,6 +112,7 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 			changedURIs[v.URI] = true
 		}
 	}
+	fmt.Printf("ChangedUris are %s\n", changedURIs)
 
 	output := []string{}
 	for k := range changedURIs {
@@ -119,6 +120,7 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 			output = append(output, uuid)
 		}
 	}
+	fmt.Printf("Output is %s\n", output)
 	return output, nil
 }
 
