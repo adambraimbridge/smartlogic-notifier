@@ -34,7 +34,7 @@ func (s *Service) GetConcept(uuid string) ([]byte, error) {
 
 func (s *Service) Notify(lastChange time.Time) error {
 	log.Debug("Request received, sleeping for 10 seconds")
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 5)
 
 	changedConcepts, err := s.smartlogic.GetChangedConceptList(lastChange)
 	if err != nil {
