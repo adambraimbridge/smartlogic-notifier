@@ -7,6 +7,7 @@ import (
 
 	"github.com/Financial-Times/kafka-client-go/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
+	"github.com/Financial-Times/transactionid-utils-go"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -55,7 +56,9 @@ func (s *Service) ForceNotify(UUIDs []string) error {
 			continue
 		}
 
-		message := kafka.NewFTMessage(map[string]string{}, string(concept))
+		message := kafka.NewFTMessage(map[string]string{
+			transactionidutils.TransactionIDHeader: transactionidutils.NewTransactionID(),
+		}, string(concept))
 		err = s.kafka.SendMessage(message)
 		if err != nil {
 			errorMap[conceptUUID] = err
