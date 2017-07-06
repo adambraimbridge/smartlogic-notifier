@@ -10,6 +10,7 @@ import (
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/http-handlers-go/httphandlers"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
+	"github.com/Financial-Times/transactionid-utils-go"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -55,7 +56,7 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		writeResponseMessage(resp, http.StatusBadRequest, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
 		return
 	}
-	err = h.notifier.Notify(lastChange)
+	err = h.notifier.Notify(lastChange, req.Header.Get(transactionidutils.TransactionIDHeader))
 	if err != nil {
 		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error completing the notify", "error": "`+err.Error()+`"}`)
 		return
@@ -81,13 +82,14 @@ func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	h.notifier.ForceNotify(pl.UUIDs)
+	h.notifier.ForceNotify(pl.UUIDs, req.Header.Get(transactionidutils.TransactionIDHeader))
 	writeResponseMessage(resp, http.StatusOK, "text/plain", "Concept notification completed")
 }
 
 func (h *Handler) HandleGetConcept(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid, ok := vars["uuid"]
+
 	if !ok {
 		writeJSONResponseMessage(resp, http.StatusBadRequest, "UUID was not set.")
 		return
@@ -134,7 +136,7 @@ func (h *Handler) RegisterAdminEndpoints(router *mux.Router, appSystemCode strin
 }
 
 func writeResponseMessage(w http.ResponseWriter, statusCode int, contentType string, message string) {
-	log.Debug("Creating response message", message)
+	log.WithField("message", message).Debug("Creating response message")
 	if contentType == "" {
 		contentType = "text/plain"
 	}

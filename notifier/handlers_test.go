@@ -253,11 +253,11 @@ func (s *mockService) GetConcept(uuid string) ([]byte, error) {
 	return []byte(c), nil
 }
 
-func (s *mockService) Notify(lastChange time.Time) error {
-	return s.ForceNotify(s.changes)
+func (s *mockService) Notify(lastChange time.Time, transactionID string) error {
+	return s.ForceNotify(s.changes, transactionID)
 }
 
-func (s *mockService) ForceNotify(UUIDs []string) error {
+func (s *mockService) ForceNotify(UUIDs []string, transactionID string) error {
 	for _, v := range UUIDs {
 		if _, ok := s.concepts[v]; ok {
 			s.sentCount++

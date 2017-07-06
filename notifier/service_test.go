@@ -39,7 +39,7 @@ func TestService_Notify(t *testing.T) {
 	}, []string{"uuid2"})
 	service := NewNotifierService(kc, sl)
 
-	err := service.Notify(time.Now())
+	err := service.Notify(time.Now(), "transactionID")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, kc.sentCount)
@@ -53,7 +53,7 @@ func TestService_ForceNotify(t *testing.T) {
 	}, []string{})
 	service := NewNotifierService(kc, sl)
 
-	err := service.ForceNotify([]string{"uuid1"})
+	err := service.ForceNotify([]string{"uuid1"}, "transactionID")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, kc.sentCount)

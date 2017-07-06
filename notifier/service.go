@@ -13,8 +13,8 @@ import (
 
 type Servicer interface {
 	GetConcept(uuid string) ([]byte, error)
-	Notify(lastChange time.Time) error
-	ForceNotify(UUIDs []string) error
+	Notify(lastChange time.Time, transactionID string) error
+	ForceNotify(UUIDs []string, transactionID string) error
 }
 
 type Service struct {
@@ -33,7 +33,7 @@ func (s *Service) GetConcept(uuid string) ([]byte, error) {
 	return s.smartlogic.GetConcept(uuid)
 }
 
-func (s *Service) Notify(lastChange time.Time) error {
+func (s *Service) Notify(lastChange time.Time, transactionID string) error {
 	log.Debug("Request received, sleeping for 10 seconds")
 	time.Sleep(time.Second * 5)
 
@@ -43,10 +43,10 @@ func (s *Service) Notify(lastChange time.Time) error {
 		return err
 	}
 
-	return s.ForceNotify(changedConcepts)
+	return s.ForceNotify(changedConcepts, transactionID)
 }
 
-func (s *Service) ForceNotify(UUIDs []string) error {
+func (s *Service) ForceNotify(UUIDs []string, transactionID string) error {
 	errorMap := map[string]error{}
 
 	for _, conceptUUID := range UUIDs {
@@ -56,9 +56,16 @@ func (s *Service) ForceNotify(UUIDs []string) error {
 			continue
 		}
 
+		newTransactionID := transactionidutils.NewTransactionID()
+
 		message := kafka.NewFTMessage(map[string]string{
-			transactionidutils.TransactionIDHeader: transactionidutils.NewTransactionID(),
+			transactionidutils.TransactionIDHeader: newTransactionID,
 		}, string(concept))
+
+		log.WithFields(log.Fields{
+			"request_transaction_id": transactionID,
+			"concept_transaction_id": newTransactionID,
+		}).Info("Sending message to Kafka")
 		err = s.kafka.SendMessage(message)
 		if err != nil {
 			errorMap[conceptUUID] = err
