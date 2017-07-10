@@ -102,8 +102,7 @@ func main() {
 		httpClient := getResilientClient()
 		sl, err := smartlogic.NewSmartlogicClient(httpClient, *smartlogicBaseURL, *smartlogicModel, *smartlogicAPIKey)
 		if err != nil {
-			log.Error("Error generating access token when connecting to Smartlogic.")
-			log.WithFields(log.Fields{})
+			log.Error("Error generating access token when connecting to Smartlogic.  If this continues to fail, please check the configuration.")
 		}
 
 		service := notifier.NewNotifierService(kf, sl)

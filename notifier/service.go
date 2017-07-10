@@ -34,7 +34,7 @@ func (s *Service) GetConcept(uuid string) ([]byte, error) {
 }
 
 func (s *Service) Notify(lastChange time.Time, transactionID string) error {
-	log.Debug("Request received, sleeping for 10 seconds")
+	log.Debug("Request received, sleeping to avoid a Smartlogic race condition.")
 	time.Sleep(time.Second * 5)
 
 	changedConcepts, err := s.smartlogic.GetChangedConceptList(lastChange)
