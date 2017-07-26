@@ -48,7 +48,7 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	lastChange, err := time.Parse("2006-01-02T15:04:05.000Z", lastChangeDate)
+	lastChange, err := time.Parse("2006-01-02T15:04:05Z", lastChangeDate)
 	log.WithField("time", lastChange).Debug("Parsing notification time")
 	lastChange = lastChange.Add(-10 * time.Millisecond)
 	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
