@@ -88,6 +88,7 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 	q := `path=tchmodel:` + c.model + `/changes&since=` + changeDate.Format("2006-01-02T15:04:05.000Z") + `&properties=[]`
 	reqURL.RawQuery = q
 
+	log.Debugf("Smartlogic Request URL: %v", reqURL.String())
 	resp, err := c.makeRequest("GET", reqURL.String())
 	if err != nil {
 		log.WithError(err).WithField("method", "GetChangedConceptList").Error("Error creating the request")
