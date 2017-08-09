@@ -13,7 +13,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-const propertiesQueryParamValue = "[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm,http://www.ft.com/ontology/shortLabel/skosxl:literalForm"
 const slTokenURL = "https://cloud.smartlogic.com/token"
 const maxAccessFailureCount = 5
 const thingURIPrefix = "http://www.ft.com/thing/"
@@ -196,7 +195,6 @@ func (c *Client) GenerateToken() error {
 		log.WithError(err).WithField("method", "GenerateToken").Error("Error decoding the response body")
 		return err
 	}
-
 	log.Debug("Setting Smartlogic access token")
 	c.accessToken = tokenResponse.AccessToken
 	return nil
@@ -210,6 +208,6 @@ func buildConceptPath(model, uuid string) string {
 	thing := "<http://www.ft.com/thing/" + uuid + ">"
 	encodedThing := url.QueryEscape(url.QueryEscape(thing))
 
-	props := url.QueryEscape(url.QueryEscape(propertiesQueryParamValue))
-	return "model:" + model + "/" + encodedThing + "&properties="+ props
+	encodedProperties := url.QueryEscape(url.QueryEscape("http://www.ft.com/ontology/shortLabel/skosxl"))
+	return "model:" + model + "/" + encodedThing + "&properties=[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel," +  encodedProperties + "/skosxl:literalForm"
 }
