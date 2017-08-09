@@ -63,7 +63,7 @@ func (c *Client) AccessToken() string {
 
 func (c *Client) GetConcept(uuid string) ([]byte, error) {
 	reqURL := c.baseURL
-	q := "path=" + buildConceptPath(c.model, uuid) + "&properties=" + propertiesQueryParamValue
+	q := "path=" + buildConceptPath(c.model, uuid)
 	reqURL.RawQuery = q
 
 	log.Debugf("Smartlogic Request URL: %v", reqURL.String())
@@ -210,5 +210,6 @@ func buildConceptPath(model, uuid string) string {
 	thing := "<http://www.ft.com/thing/" + uuid + ">"
 	encodedThing := url.QueryEscape(url.QueryEscape(thing))
 
-	return "model:" + model + "/" + encodedThing
+	props := url.QueryEscape(url.QueryEscape("&properties=" + propertiesQueryParamValue))
+	return "model:" + model + "/" + encodedThing + props
 }
