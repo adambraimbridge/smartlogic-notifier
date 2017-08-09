@@ -210,6 +210,6 @@ func buildConceptPath(model, uuid string) string {
 	thing := "<http://www.ft.com/thing/" + uuid + ">"
 	encodedThing := url.QueryEscape(url.QueryEscape(thing))
 
-	props := url.QueryEscape(url.QueryEscape("&properties=" + propertiesQueryParamValue))
-	return "model:" + model + "/" + encodedThing + props
+	props := url.QueryEscape(url.QueryEscape(propertiesQueryParamValue))
+	return "model:" + model + "/" + encodedThing + "&properties="+ props
 }
