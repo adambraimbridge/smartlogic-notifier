@@ -8,7 +8,7 @@ import (
 	"github.com/Financial-Times/kafka-client-go/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
 	"github.com/Financial-Times/transactionid-utils-go"
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 )
 
 type Servicer interface {

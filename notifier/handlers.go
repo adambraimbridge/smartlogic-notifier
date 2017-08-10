@@ -11,7 +11,7 @@ import (
 	"github.com/Financial-Times/http-handlers-go/httphandlers"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/Financial-Times/transactionid-utils-go"
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rcrowley/go-metrics"

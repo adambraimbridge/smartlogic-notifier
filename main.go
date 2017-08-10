@@ -11,7 +11,7 @@ import (
 	"github.com/Financial-Times/kafka-client-go/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/notifier"
 	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
 	_ "github.com/joho/godotenv/autoload"
