@@ -208,6 +208,6 @@ func buildConceptPath(model, uuid string) string {
 	thing := "<http://www.ft.com/thing/" + uuid + ">"
 	encodedThing := url.QueryEscape(url.QueryEscape(thing))
 
-	encodedProperties := url.QueryEscape(url.QueryEscape("<http://www.ft.com/ontology/shortLabel>"))
-	return "model:" + model + "/" + encodedThing + "&properties=[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel," +  encodedProperties + "/skosxl:literalForm"
+	encodedProperties := url.QueryEscape("<http://www.ft.com/ontology/shortLabel>")
+	return "model:" + model + "/" + encodedThing + "&properties=[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm," +  encodedProperties + "/skosxl:literalForm"
 }
