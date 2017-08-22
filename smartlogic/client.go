@@ -119,7 +119,7 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 }
 
 func getUUIDfromValidURI(uri string) (string, bool) {
-	if strings.HasPrefix(uri, thingURIPrefix) {
+	if strings.HasPrefix(uri, thingURIPrefix) && !strings.Contains(uri, "ConceptScheme") {
 		return strings.TrimPrefix(uri, thingURIPrefix), true
 	}
 	return "", false
