@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 const slTokenURL = "https://cloud.smartlogic.com/token"
@@ -209,5 +209,5 @@ func buildConceptPath(model, uuid string) string {
 	encodedThing := url.QueryEscape(url.QueryEscape(thing))
 
 	encodedProperties := url.QueryEscape("<http://www.ft.com/ontology/shortLabel>")
-	return "model:" + model + "/" + encodedThing + "&properties=[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm," +  encodedProperties + "/skosxl:literalForm"
+	return "model:" + model + "/" + encodedThing + "&properties=[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm," + encodedProperties + "/skosxl:literalForm"
 }

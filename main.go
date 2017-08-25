@@ -11,11 +11,11 @@ import (
 	"github.com/Financial-Times/kafka-client-go/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/notifier"
 	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/sethgrid/pester"
+	log "github.com/sirupsen/logrus"
 )
 
 const appDescription = "Entrypoint for concept publish notifications from the Smartlogic Semaphore system"
@@ -95,7 +95,7 @@ func main() {
 
 		router := mux.NewRouter()
 
-		kf, err := kafka.NewProducer(*kafkaAddresses, *kafkaTopic)
+		kf, err := kafka.NewProducer(*kafkaAddresses, *kafkaTopic, kafka.DefaultProducerConfig())
 		if err != nil {
 			log.WithField("kafkaAddresses", *kafkaAddresses).WithField("kafkaTopic", *kafkaTopic).Fatalf("Error creating the Kafka producer.")
 		}
