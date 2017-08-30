@@ -10,10 +10,9 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
-const propertiesQueryParamValue = "[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm"
 const slTokenURL = "https://cloud.smartlogic.com/token"
 const maxAccessFailureCount = 5
 const thingURIPrefix = "http://www.ft.com/thing/"
@@ -63,9 +62,10 @@ func (c *Client) AccessToken() string {
 
 func (c *Client) GetConcept(uuid string) ([]byte, error) {
 	reqURL := c.baseURL
-	q := "path=" + buildConceptPath(c.model, uuid) + "&properties=" + propertiesQueryParamValue
+	q := "path=" + buildConceptPath(c.model, uuid)
 	reqURL.RawQuery = q
 
+	log.Debugf("Smartlogic Request URL: %v", reqURL.String())
 	resp, err := c.makeRequest("GET", reqURL.String())
 	if err != nil {
 		log.WithError(err).WithField("method", "GetConcept").Error("Error creating the request")
@@ -88,6 +88,7 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 	q := `path=tchmodel:` + c.model + `/changes&since=` + changeDate.Format("2006-01-02T15:04:05.000Z") + `&properties=[]`
 	reqURL.RawQuery = q
 
+	log.Debugf("Smartlogic Change List Request URL: %v", reqURL.String())
 	resp, err := c.makeRequest("GET", reqURL.String())
 	if err != nil {
 		log.WithError(err).WithField("method", "GetChangedConceptList").Error("Error creating the request")
@@ -119,7 +120,7 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 }
 
 func getUUIDfromValidURI(uri string) (string, bool) {
-	if strings.HasPrefix(uri, thingURIPrefix) {
+	if strings.HasPrefix(uri, thingURIPrefix) && !strings.Contains(uri, "ConceptScheme") {
 		return strings.TrimPrefix(uri, thingURIPrefix), true
 	}
 	return "", false
@@ -194,7 +195,6 @@ func (c *Client) GenerateToken() error {
 		log.WithError(err).WithField("method", "GenerateToken").Error("Error decoding the response body")
 		return err
 	}
-
 	log.Debug("Setting Smartlogic access token")
 	c.accessToken = tokenResponse.AccessToken
 	return nil
@@ -208,5 +208,6 @@ func buildConceptPath(model, uuid string) string {
 	thing := "<http://www.ft.com/thing/" + uuid + ">"
 	encodedThing := url.QueryEscape(url.QueryEscape(thing))
 
-	return "model:" + model + "/" + encodedThing
+	encodedProperties := url.QueryEscape("<http://www.ft.com/ontology/shortLabel>")
+	return "model:" + model + "/" + encodedThing + "&properties=[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm," + encodedProperties + "/skosxl:literalForm"
 }
