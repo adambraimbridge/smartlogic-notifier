@@ -88,6 +88,7 @@ func main() {
 		lvl = log.InfoLevel
 	}
 	log.SetLevel(lvl)
+	log.SetFormatter(&log.JSONFormatter{})
 	log.Infof("[Startup] %s is starting", *appSystemCode)
 
 	app.Action = func() {
