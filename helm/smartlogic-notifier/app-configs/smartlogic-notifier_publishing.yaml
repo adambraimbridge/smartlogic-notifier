@@ -1,0 +1,7 @@
+# Values used for the deployed application.
+replicaCount: 2
+service:
+  name: smartlogic-notifier
+config:
+  logLevel: INFO
+  kafkaTopic: SmartlogicConcept
