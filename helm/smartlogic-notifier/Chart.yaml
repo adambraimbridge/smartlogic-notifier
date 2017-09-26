@@ -1,0 +1,4 @@
+apiVersion: v1
+description: smartlogic-notifier Helm chart for Kubernetes
+name: smartlogic-notifier
+version: 0.0.0
