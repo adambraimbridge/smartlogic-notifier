@@ -9,7 +9,9 @@ image:
   repository: coco/smartlogic-notifier
   pullPolicy: IfNotPresent
 resources:
+  requests:
+    memory: 32Mi
   limits:
-    memory: 512Mi
+    memory: 128Mi
 
 
