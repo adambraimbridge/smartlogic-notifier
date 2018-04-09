@@ -135,7 +135,7 @@ func TestHandlers(t *testing.T) {
 			``,
 			500,
 			"{\"message\": \"There was an error retrieving the concept\", \"error\": \"Can't find concept\"}",
-			errors.New("anerror"),
+			nil,
 			map[string]string{
 				"1": "1",
 				"2": "2",
