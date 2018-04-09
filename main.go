@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -82,6 +81,13 @@ func main() {
 		EnvVar: "LOG_LEVEL",
 	})
 
+	smartlogicHealthCacheDuration := app.Int(cli.IntOpt{
+		Name:   "cacheSmartlogicSuccessForSeconds",
+		Value:  60,
+		Desc:   "How many seconds to cache a successful smart logic response for",
+		EnvVar: "SMARTLOGIC_HEALTHCHECK_CACHE_SECONDS",
+	})
+
 	lvl, err := log.ParseLevel(*logLevel)
 	if err != nil {
 		log.Warnf("Log level %s could not be parsed, defaulting to info", logLevel)
@@ -110,7 +116,13 @@ func main() {
 
 		handler := notifier.NewNotifierHandler(service)
 		handler.RegisterEndpoints(router)
-		monitoringRouter := handler.RegisterAdminEndpoints(router, *appSystemCode, *appName, appDescription)
+		monitoringRouter := handler.RegisterAdminEndpoints(
+			router,
+			*appSystemCode,
+			*appName,
+			appDescription,
+			time.Second*time.Duration(*smartlogicHealthCacheDuration),
+		)
 
 		go func() {
 			if err := http.ListenAndServe(":"+*port, monitoringRouter); err != nil {
@@ -138,12 +150,8 @@ func getResilientClient() *pester.Client {
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 10,
 			MaxIdleConns:        10,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
 		},
-		Timeout: 30 * time.Second,
+		Timeout: 5 * time.Second,
 	}
 	client := pester.NewExtendedClient(c)
 	client.Backoff = pester.ExponentialBackoff
