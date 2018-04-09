@@ -196,7 +196,7 @@ func TestHandlers(t *testing.T) {
 			handler := NewNotifierHandler(mockService)
 			m := mux.NewRouter()
 			handler.RegisterEndpoints(m)
-			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description")
+			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", time.Second)
 
 			req, _ := http.NewRequest(d.method, d.url, bytes.NewBufferString(d.requestBody))
 			rr := httptest.NewRecorder()
@@ -213,6 +213,97 @@ func TestHandlers(t *testing.T) {
 		})
 	}
 
+}
+
+func TestHealthCheckError(t *testing.T) {
+	changes := []string{}
+	concepts := map[string]string{
+		"healthcheck-concept": "1",
+	}
+	mockSvc := NewMockService(concepts, changes, errors.New("something bad"))
+	handler := NewNotifierHandler(mockSvc)
+	m := mux.NewRouter()
+	handler.RegisterEndpoints(m)
+	handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", time.Second)
+
+	req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
+	rr := httptest.NewRecorder()
+	m.ServeHTTP(rr, req)
+
+	b, err := ioutil.ReadAll(rr.Body)
+	assert.NoError(t, err)
+	body := string(b)
+	assert.Equal(t, 503, rr.Code, "__gtg")
+	assert.Equal(t, "something bad", body, "__gtg")
+}
+
+func TestHealthCheckCache(t *testing.T) {
+	changes := []string{}
+	concepts := map[string]string{
+		"healthcheck-concept": "1",
+	}
+	mockSvc := NewMockService(concepts, changes, nil)
+	handler := NewNotifierHandler(mockSvc)
+	m := mux.NewRouter()
+	handler.RegisterEndpoints(m)
+	handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", time.Second)
+
+	// check that gtg returns ok
+	{
+		req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
+		rr := httptest.NewRecorder()
+		m.ServeHTTP(rr, req)
+		b, err := ioutil.ReadAll(rr.Body)
+		assert.NoError(t, err)
+		body := string(b)
+		assert.Equal(t, 200, rr.Code, "__gtg")
+		assert.Equal(t, "OK", body, "__gtg")
+	}
+
+	// tell mock to return error
+	mockSvc.(*mockService).err = errors.New("something random")
+
+	// but expect gtg to return cached ok
+	{
+		req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
+		rr := httptest.NewRecorder()
+		m.ServeHTTP(rr, req)
+		b, err := ioutil.ReadAll(rr.Body)
+		assert.NoError(t, err)
+		body := string(b)
+		assert.Equal(t, 200, rr.Code, "__gtg")
+		assert.Equal(t, "OK", body, "__gtg")
+	}
+
+	// wait for cache to clear
+	time.Sleep(time.Second)
+
+	// and expect gtg to return err
+	{
+		req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
+		rr := httptest.NewRecorder()
+		m.ServeHTTP(rr, req)
+		b, err := ioutil.ReadAll(rr.Body)
+		assert.NoError(t, err)
+		body := string(b)
+		assert.Equal(t, 503, rr.Code, "__gtg")
+		assert.Equal(t, "something random", body, "__gtg")
+	}
+
+	// tell mock to return ok
+	mockSvc.(*mockService).err = nil
+
+	// and expect gtg to return ok instantly as we don't cache failure
+	{
+		req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
+		rr := httptest.NewRecorder()
+		m.ServeHTTP(rr, req)
+		b, err := ioutil.ReadAll(rr.Body)
+		assert.NoError(t, err)
+		body := string(b)
+		assert.Equal(t, 200, rr.Code, "__gtg")
+		assert.Equal(t, "OK", body, "__gtg")
+	}
 }
 
 func newRequest(method, url string, body string) *http.Request {
@@ -246,10 +337,15 @@ func NewMockService(concepts map[string]string, changes []string, err error) Ser
 }
 
 func (s *mockService) GetConcept(uuid string) ([]byte, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+
 	c, ok := s.concepts[uuid]
 	if !ok {
 		return nil, errors.New("Can't find concept")
 	}
+
 	return []byte(c), nil
 }
 
