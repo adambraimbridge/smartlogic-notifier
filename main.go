@@ -82,10 +82,10 @@ func main() {
 	})
 
 	smartlogicHealthCacheFor := app.String(cli.StringOpt{
-		Name:   "cacheSmartlogicSuccessFor",
+		Name:   "healthcheckSuccessCacheTime",
 		Value:  "1m",
-		Desc:   "How long to cache a successful smart logic response for",
-		EnvVar: "SMARTLOGIC_HEALTHCHECK_CACHE_FOR",
+		Desc:   "How long to cache a successful Smartlogic response for",
+		EnvVar: "HEALTHCHECK_SUCCESS_CACHE_TIME",
 	})
 
 	lvl, err := log.ParseLevel(*logLevel)
@@ -99,10 +99,11 @@ func main() {
 
 	smartlogicHealthCacheDuration, err := time.ParseDuration(*smartlogicHealthCacheFor)
 	if err != nil {
-		log.Fatal("Invalid smartlogicHealthCacheFor duration")
+		log.Warnf("Health check success cache duration %s could not be parsed", *smartlogicHealthCacheFor)
+		smartlogicHealthCacheDuration = time.Duration(time.Minute)
 	}
 
-	log.Infof("Caching health for %s", smartlogicHealthCacheDuration)
+	log.Infof("Caching successful health for %s", smartlogicHealthCacheDuration)
 
 	app.Action = func() {
 		log.Infof("System code: %s, App Name: %s, Port: %s", *appSystemCode, *appName, *port)

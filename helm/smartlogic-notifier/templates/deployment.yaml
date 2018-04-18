@@ -56,7 +56,7 @@ spec:
           value: {{ .Values.config.kafkaTopic }}
         - name: LOG_LEVEL
           value: {{ .Values.config.logLevel }}
-        - name: SMARTLOGIC_HEALTHCHECK_CACHE_FOR
+        - name: HEALTHCHECK_SUCCESS_CACHE_TIME
           value: "1m"
         ports: 
         - containerPort: 8080 

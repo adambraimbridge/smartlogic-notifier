@@ -19,19 +19,19 @@ type HealthService struct {
 }
 
 type config struct {
-	appSystemCode             string
-	appName                   string
-	description               string
-	cacheSmartlogicSuccessFor time.Duration
+	appSystemCode               string
+	appName                     string
+	description                 string
+	healthcheckSuccessCacheTime time.Duration
 }
 
-func NewHealthService(notifier Servicer, appSystemCode string, appName string, description string, cacheSmartlogicSuccessFor time.Duration) *HealthService {
+func NewHealthService(notifier Servicer, appSystemCode string, appName string, description string, healthcheckSuccessCacheTime time.Duration) *HealthService {
 	service := &HealthService{
 		config: &config{
-			appSystemCode:             appSystemCode,
-			appName:                   appName,
-			description:               description,
-			cacheSmartlogicSuccessFor: cacheSmartlogicSuccessFor,
+			appSystemCode:               appSystemCode,
+			appName:                     appName,
+			description:                 description,
+			healthcheckSuccessCacheTime: healthcheckSuccessCacheTime,
 		},
 		notifier: notifier,
 	}
@@ -78,13 +78,13 @@ func (svc *HealthService) GtgCheck() gtg.StatusChecker {
 			svc.Lock()
 			defer svc.Unlock()
 
-			cacheDuration := svc.config.cacheSmartlogicSuccessFor
+			cacheDuration := svc.config.healthcheckSuccessCacheTime
 			nextCheck := svc.lastSuccessfulSmartlogicCheck.Add(cacheDuration)
 			if nextCheck.After(time.Now()) {
-				log.Debug("Skipping smart logic health check")
+				log.Debug("Skipping Smartlogic health check")
 				return gtg.Status{GoodToGo: true}
 			}
-			log.Debug("Performing smart logic health check")
+			log.Debug("Performing Smartlogic health check")
 			if _, err := svc.smartlogicCheck(); err != nil {
 				return gtg.Status{GoodToGo: false, Message: err.Error()}
 			}
