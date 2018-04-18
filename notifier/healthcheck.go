@@ -7,6 +7,7 @@ import (
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/service-status-go/gtg"
+	log "github.com/sirupsen/logrus"
 )
 
 type HealthService struct {
@@ -80,8 +81,10 @@ func (svc *HealthService) GtgCheck() gtg.StatusChecker {
 			cacheDuration := svc.config.cacheSmartlogicSuccessFor
 			nextCheck := svc.lastSuccessfulSmartlogicCheck.Add(cacheDuration)
 			if nextCheck.After(time.Now()) {
+				log.Debug("Skipping smart logic health check")
 				return gtg.Status{GoodToGo: true}
 			}
+			log.Debug("Performing smart logic health check")
 			if _, err := svc.smartlogicCheck(); err != nil {
 				return gtg.Status{GoodToGo: false, Message: err.Error()}
 			}
