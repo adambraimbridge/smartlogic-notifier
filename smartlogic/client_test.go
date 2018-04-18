@@ -1,11 +1,9 @@
 package smartlogic
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"net/http"
 	"net/url"
 	"testing"
 
@@ -15,17 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
-type mockHttpClient struct {
-	resp       string
-	statusCode int
-	err        error
-}
-
-func (c mockHttpClient) Do(req *http.Request) (resp *http.Response, err error) {
-	cb := ioutil.NopCloser(bytes.NewReader([]byte(c.resp)))
-	return &http.Response{Body: cb, StatusCode: c.statusCode}, c.err
-}
 
 func NewSmartlogicTestClient(httpClient httpClient, baseURL string, model string, apiKey string) (Client, error) {
 	u, err := url.Parse(baseURL)
