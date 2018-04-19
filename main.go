@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -82,6 +81,13 @@ func main() {
 		EnvVar: "LOG_LEVEL",
 	})
 
+	smartlogicHealthCacheFor := app.String(cli.StringOpt{
+		Name:   "healthcheckSuccessCacheTime",
+		Value:  "1m",
+		Desc:   "How long to cache a successful Smartlogic response for",
+		EnvVar: "HEALTHCHECK_SUCCESS_CACHE_TIME",
+	})
+
 	lvl, err := log.ParseLevel(*logLevel)
 	if err != nil {
 		log.Warnf("Log level %s could not be parsed, defaulting to info", logLevel)
@@ -90,6 +96,14 @@ func main() {
 	log.SetLevel(lvl)
 	log.SetFormatter(&log.JSONFormatter{})
 	log.Infof("[Startup] %s is starting", *appSystemCode)
+
+	smartlogicHealthCacheDuration, err := time.ParseDuration(*smartlogicHealthCacheFor)
+	if err != nil {
+		log.Warnf("Health check success cache duration %s could not be parsed", *smartlogicHealthCacheFor)
+		smartlogicHealthCacheDuration = time.Duration(time.Minute)
+	}
+
+	log.Infof("Caching successful health for %s", smartlogicHealthCacheDuration)
 
 	app.Action = func() {
 		log.Infof("System code: %s, App Name: %s, Port: %s", *appSystemCode, *appName, *port)
@@ -110,7 +124,13 @@ func main() {
 
 		handler := notifier.NewNotifierHandler(service)
 		handler.RegisterEndpoints(router)
-		monitoringRouter := handler.RegisterAdminEndpoints(router, *appSystemCode, *appName, appDescription)
+		monitoringRouter := handler.RegisterAdminEndpoints(
+			router,
+			*appSystemCode,
+			*appName,
+			appDescription,
+			smartlogicHealthCacheDuration,
+		)
 
 		go func() {
 			if err := http.ListenAndServe(":"+*port, monitoringRouter); err != nil {
@@ -138,12 +158,8 @@ func getResilientClient() *pester.Client {
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 10,
 			MaxIdleConns:        10,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
 		},
-		Timeout: 30 * time.Second,
+		Timeout: 5 * time.Second,
 	}
 	client := pester.NewExtendedClient(c)
 	client.Backoff = pester.ExponentialBackoff
