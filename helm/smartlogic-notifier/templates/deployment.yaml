@@ -41,7 +41,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: global-secrets
-              key: smartlogic.model
+              key: {{ .Values.config.smartlogicModel }}
         - name: SMARTLOGIC_API_KEY
           valueFrom:
             secretKeyRef:

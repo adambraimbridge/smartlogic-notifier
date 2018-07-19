@@ -1,8 +1,8 @@
 # Values used for the deployed application.
 replicaCount: 2
 service:
-  name: smartlogic-notifier
+  name: locations-smartlogic-notifier
 config:
-  smartlogicModel: "smartlogic.model"
+  smartlogicModel: "smartlogic.locations.model"
   logLevel: INFO
   kafkaTopic: SmartlogicConcept
