@@ -3,6 +3,6 @@ replicaCount: 2
 service:
   name: locations-smartlogic-notifier
 config:
-  smartlogicModel: "smartlogic.locations.model"
+  smartlogicModelKey: "smartlogic.locations.model"
   logLevel: INFO
   kafkaTopic: SmartlogicConcept
