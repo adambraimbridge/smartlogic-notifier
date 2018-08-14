@@ -6,4 +6,4 @@ config:
   smartlogicModelKey: "smartlogic.locations.model"
   logLevel: INFO
   kafkaTopic: SmartlogicConcept
-  conceptUriPrefix: "http://www.ft.com/ontology/managedlocation"
+  conceptUriPrefix: "http://www.ft.com/ontology/managedlocation/"
