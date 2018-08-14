@@ -90,7 +90,7 @@ func main() {
 
 	conceptUriPrefix := app.String(cli.StringOpt{
 		Name:   "conceptUriPrefix",
-		Desc:   "The concept URI prefix to be added before the UUID for Smartlogic request",
+		Desc:   "The concept URI prefix to be added before the UUID part of the Smartlogic request path",
 		EnvVar: "CONCEPT_URI_PREFIX",
 	})
 
