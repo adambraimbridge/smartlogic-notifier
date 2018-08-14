@@ -88,6 +88,12 @@ func main() {
 		EnvVar: "HEALTHCHECK_SUCCESS_CACHE_TIME",
 	})
 
+	conceptUriPrefix := app.String(cli.StringOpt{
+		Name:   "conceptUriPrefix",
+		Desc:   "The concept URI prefix to be added before the UUID for Smartlogic request",
+		EnvVar: "CONCEPT_URI_PREFIX",
+	})
+
 	lvl, err := log.ParseLevel(*logLevel)
 	if err != nil {
 		log.Warnf("Log level %s could not be parsed, defaulting to info", logLevel)
@@ -115,7 +121,7 @@ func main() {
 			log.WithField("kafkaAddresses", *kafkaAddresses).WithField("kafkaTopic", *kafkaTopic).Fatalf("Error creating the Kafka producer.")
 		}
 		httpClient := getResilientClient()
-		sl, err := smartlogic.NewSmartlogicClient(httpClient, *smartlogicBaseURL, *smartlogicModel, *smartlogicAPIKey)
+		sl, err := smartlogic.NewSmartlogicClient(httpClient, *smartlogicBaseURL, *smartlogicModel, *smartlogicAPIKey, *conceptUriPrefix)
 		if err != nil {
 			log.Error("Error generating access token when connecting to Smartlogic.  If this continues to fail, please check the configuration.")
 		}

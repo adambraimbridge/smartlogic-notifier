@@ -15,7 +15,8 @@ import (
 
 const slTokenURL = "https://cloud.smartlogic.com/token"
 const maxAccessFailureCount = 5
-const thingURIPrefix = "http://www.ft.com/thing/"
+const thingURIPrefix = "http://www.ft.com/thing"
+const managedLocationURIPrefix = "http://www.ft.com/ontology/managedlocation"
 
 type httpClient interface {
 	Do(req *http.Request) (resp *http.Response, err error)
@@ -30,23 +31,25 @@ type Clienter interface {
 type Client struct {
 	baseURL            url.URL
 	model              string
+	conceptUriPrefix   string
 	apiKey             string
 	httpClient         httpClient
 	accessToken        string
 	accessFailureCount int
 }
 
-func NewSmartlogicClient(httpClient httpClient, baseURL string, model string, apiKey string) (Clienter, error) {
+func NewSmartlogicClient(httpClient httpClient, baseURL string, model string, apiKey string, conceptUriPrefix string) (Clienter, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return &Client{}, err
 	}
 
 	client := Client{
-		baseURL:    *u,
-		model:      model,
-		apiKey:     apiKey,
-		httpClient: httpClient,
+		baseURL:          *u,
+		model:            model,
+		conceptUriPrefix: conceptUriPrefix,
+		apiKey:           apiKey,
+		httpClient:       httpClient,
 	}
 
 	err = client.GenerateToken()
@@ -62,7 +65,7 @@ func (c *Client) AccessToken() string {
 
 func (c *Client) GetConcept(uuid string) ([]byte, error) {
 	reqURL := c.baseURL
-	q := "path=" + buildConceptPath(c.model, uuid)
+	q := "path=" + c.buildConceptPath(uuid)
 	reqURL.RawQuery = q
 
 	log.Debugf("Smartlogic Request URL: %v", reqURL.String())
@@ -120,8 +123,13 @@ func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
 }
 
 func getUUIDfromValidURI(uri string) (string, bool) {
-	if strings.HasPrefix(uri, thingURIPrefix) && !strings.Contains(uri, "ConceptScheme") {
-		return strings.TrimPrefix(uri, thingURIPrefix), true
+	if !strings.Contains(uri, "ConceptScheme") {
+		if strings.HasPrefix(uri, thingURIPrefix) {
+			return strings.TrimPrefix(uri, thingURIPrefix), true
+		}
+		if strings.HasPrefix(uri, managedLocationURIPrefix) {
+			return strings.TrimPrefix(uri, managedLocationURIPrefix), true
+		}
 	}
 	return "", false
 }
@@ -200,14 +208,14 @@ func (c *Client) GenerateToken() error {
 	return nil
 }
 
-func buildConceptPath(model, uuid string) string {
+func (c *Client) buildConceptPath(uuid string) string {
 	/*
 		Because the API call needs to be made as part of the 'path' query parameter, we need to escape the IRI twice,
 		once to encode the IRI according to how Smartlogic needs it and once to encode it as a query parameter.
 	*/
-	thing := "<http://www.ft.com/thing/" + uuid + ">"
-	encodedThing := url.QueryEscape(url.QueryEscape(thing))
+	concept := "<" + c.conceptUriPrefix + uuid + ">"
+	encodedConcept := url.QueryEscape(url.QueryEscape(concept))
 
 	encodedProperties := url.QueryEscape("<http://www.ft.com/ontology/shortLabel>")
-	return "model:" + model + "/" + encodedThing + "&properties=[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm," + encodedProperties + "/skosxl:literalForm"
+	return "model:" + c.model + "/" + encodedConcept + "&properties=[],skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm," + encodedProperties + "/skosxl:literalForm"
 }

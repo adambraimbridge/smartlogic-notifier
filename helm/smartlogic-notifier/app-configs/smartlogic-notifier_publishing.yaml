@@ -6,3 +6,4 @@ config:
   smartlogicModel: "smartlogic.model"
   logLevel: INFO
   kafkaTopic: SmartlogicConcept
+  conceptUriPrefix: "http://www.ft.com/thing/"
