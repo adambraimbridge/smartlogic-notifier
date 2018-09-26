@@ -165,7 +165,7 @@ func getResilientClient() *pester.Client {
 			MaxIdleConnsPerHost: 10,
 			MaxIdleConns:        10,
 		},
-		Timeout: 5 * time.Second,
+		Timeout: 25 * time.Second,
 	}
 	client := pester.NewExtendedClient(c)
 	client.Backoff = pester.ExponentialBackoff

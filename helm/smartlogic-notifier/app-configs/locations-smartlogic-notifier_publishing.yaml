@@ -4,6 +4,6 @@ service:
   name: locations-smartlogic-notifier
 config:
   smartlogicModelKey: "smartlogic.locations.model"
-  logLevel: INFO
+  logLevel: DEBUG
   kafkaTopic: SmartlogicConcept
   conceptUriPrefix: "http://www.ft.com/ontology/managedlocation/"
