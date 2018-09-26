@@ -147,10 +147,9 @@ func (c *Client) makeRequest(method, url string) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.accessToken)
-	log.Debug("Access token: " + c.accessToken) //TODO: debugging only - remove after fixing
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		log.Debug("Authorization header: " + req.Header.Get("Authorization")) //TODO: debugging only - remove after fixing
 		log.WithError(err).WithField("method", "makeRequest").Error("Error making the request")
 		return resp, err
 	}
