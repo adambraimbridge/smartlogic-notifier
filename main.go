@@ -135,6 +135,7 @@ func main() {
 			*appSystemCode,
 			*appName,
 			appDescription,
+			*smartlogicModel,
 			smartlogicHealthCacheDuration,
 		)
 

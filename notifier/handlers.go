@@ -120,8 +120,8 @@ func (h *Handler) RegisterEndpoints(router *mux.Router) {
 	router.Handle("/concept/{uuid}", getConceptHandler)
 }
 
-func (h *Handler) RegisterAdminEndpoints(router *mux.Router, appSystemCode string, appName string, description string, healthcheckSuccessCacheTime time.Duration) http.Handler {
-	healthService := NewHealthService(h.notifier, appSystemCode, appName, description, healthcheckSuccessCacheTime)
+func (h *Handler) RegisterAdminEndpoints(router *mux.Router, appSystemCode string, appName string, description string, smartlogicModel string, healthcheckSuccessCacheTime time.Duration) http.Handler {
+	healthService := NewHealthService(h.notifier, appSystemCode, appName, description, smartlogicModel, healthcheckSuccessCacheTime)
 
 	router.HandleFunc("/__health", fthealth.Handler(healthService.HealthcheckHandler()))
 	router.HandleFunc(status.GTGPath, status.NewGoodToGoHandler(healthService.GtgCheck()))
