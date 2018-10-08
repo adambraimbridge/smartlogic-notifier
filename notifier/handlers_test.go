@@ -196,7 +196,7 @@ func TestHandlers(t *testing.T) {
 			handler := NewNotifierHandler(mockService)
 			m := mux.NewRouter()
 			handler.RegisterEndpoints(m)
-			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", time.Second)
+			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", time.Second)
 
 			req, _ := http.NewRequest(d.method, d.url, bytes.NewBufferString(d.requestBody))
 			rr := httptest.NewRecorder()
@@ -224,7 +224,7 @@ func TestHealthCheckError(t *testing.T) {
 	handler := NewNotifierHandler(mockSvc)
 	m := mux.NewRouter()
 	handler.RegisterEndpoints(m)
-	handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", time.Second)
+	handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", time.Second)
 
 	req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
 	rr := httptest.NewRecorder()
@@ -246,7 +246,7 @@ func TestHealthCheckCache(t *testing.T) {
 	handler := NewNotifierHandler(mockSvc)
 	m := mux.NewRouter()
 	handler.RegisterEndpoints(m)
-	handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", time.Second)
+	handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", time.Second)
 
 	// check that gtg returns ok
 	{
