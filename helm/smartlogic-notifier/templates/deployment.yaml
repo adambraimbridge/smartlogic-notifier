@@ -41,7 +41,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: global-secrets
-              key: smartlogic.model
+              key: {{ .Values.config.smartlogicModelKey }}
         - name: SMARTLOGIC_API_KEY
           valueFrom:
             secretKeyRef:
@@ -54,6 +54,8 @@ spec:
               key: kafka.url
         - name: KAFKA_TOPIC
           value: {{ .Values.config.kafkaTopic }}
+        - name: CONCEPT_URI_PREFIX
+          value: {{ .Values.config.conceptUriPrefix }}
         - name: LOG_LEVEL
           value: {{ .Values.config.logLevel }}
         - name: HEALTHCHECK_SUCCESS_CACHE_TIME

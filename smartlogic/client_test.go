@@ -14,17 +14,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func NewSmartlogicTestClient(httpClient httpClient, baseURL string, model string, apiKey string) (Client, error) {
+func NewSmartlogicTestClient(httpClient httpClient, baseURL string, model string, apiKey string, conceptUriPrefix string) (Client, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return Client{}, err
 	}
 
 	client := Client{
-		baseURL:    *u,
-		model:      model,
-		apiKey:     apiKey,
-		httpClient: httpClient,
+		baseURL:          *u,
+		model:            model,
+		conceptUriPrefix: conceptUriPrefix,
+		apiKey:           apiKey,
+		httpClient:       httpClient,
 	}
 
 	return client, nil
@@ -40,7 +41,7 @@ func TestNewSmartlogicClient_Success(t *testing.T) {
 			resp:       tokenResponseString,
 			statusCode: 200,
 			err:        nil,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.NoError(t, err)
 	assert.EqualValues(t, tokenResponseValue, sl.AccessToken())
@@ -56,7 +57,7 @@ func TestNewSmartlogicClient_BadURL(t *testing.T) {
 			resp:       tokenResponseString,
 			statusCode: 200,
 			err:        nil,
-		}, "http:// base/url", "modelName", "apiKey",
+		}, "http:// base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.Error(t, err)
 	assert.EqualValues(t, "parse http:// base/url: invalid character \" \" in host name", err.Error())
@@ -71,7 +72,7 @@ func TestNewSmartlogicClient_NoToken(t *testing.T) {
 			resp:       tokenResponseString,
 			statusCode: 200,
 			err:        nil,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "", sl.AccessToken())
@@ -87,7 +88,7 @@ func TestNewSmartlogicClient_BadResponse(t *testing.T) {
 			resp:       tokenResponseString,
 			statusCode: 404,
 			err:        responseError,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.Error(t, err)
 	assert.EqualValues(t, responseError, err)
@@ -102,7 +103,7 @@ func TestNewSmartlogicClient_BadJSON(t *testing.T) {
 			resp:       tokenResponseString,
 			statusCode: 200,
 			err:        nil,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.Error(t, err)
 	assert.IsType(t, &json.SyntaxError{}, err)
@@ -114,7 +115,7 @@ func TestClient_MakeRequest_Success(t *testing.T) {
 			resp:       "response",
 			statusCode: 200,
 			err:        nil,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 
 	resp, err := sl.makeRequest("GET", "http://a/url")
@@ -131,7 +132,7 @@ func TestClient_MakeRequest_Unauthorized(t *testing.T) {
 			resp:       "response",
 			statusCode: 401,
 			err:        nil,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 
 	_, err = sl.makeRequest("GET", "http://a/url")
@@ -145,7 +146,7 @@ func TestClient_MakeRequest_DoError(t *testing.T) {
 			resp:       "response",
 			statusCode: 200,
 			err:        errors.New("Errorfield"),
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 
 	_, err = sl.makeRequest("GET", "http://a/url")
@@ -159,7 +160,7 @@ func TestClient_MakeRequest_RequestError(t *testing.T) {
 			resp:       "response",
 			statusCode: 200,
 			err:        nil,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 
 	_, err = sl.makeRequest("GET", "http:// a/url")
@@ -175,7 +176,7 @@ func TestClient_GetConcept_URLError(t *testing.T) {
 			resp:       conceptResponse,
 			statusCode: 200,
 			err:        nil,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.NoError(t, err)
 
@@ -192,14 +193,14 @@ func TestClient_GetChangedConceptList_Success(t *testing.T) {
 			resp:       string(conceptResponse),
 			statusCode: 200,
 			err:        nil,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.NoError(t, err)
 
 	response, err := sl.GetChangedConceptList(time.Now())
 	assert.NoError(t, err)
 
-	expectedResponse := []string{"testTypeMetadata", "fd55c1f0-6c5e-4869-aed4-6816836ffdb9"}
+	expectedResponse := []string{"/testTypeMetadata", "/fd55c1f0-6c5e-4869-aed4-6816836ffdb9"}
 
 	sort.Strings(expectedResponse)
 	sort.Strings(response)
@@ -216,7 +217,7 @@ func TestClient_GetChangedConceptList_RequestError(t *testing.T) {
 			resp:       string(conceptResponse),
 			statusCode: 200,
 			err:        requestError,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.NoError(t, err)
 
@@ -234,7 +235,7 @@ func TestClient_GetChangedConceptList_BadResponseBody(t *testing.T) {
 			resp:       string(conceptResponse),
 			statusCode: 200,
 			err:        nil,
-		}, "http://base/url", "modelName", "apiKey",
+		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.NoError(t, err)
 
