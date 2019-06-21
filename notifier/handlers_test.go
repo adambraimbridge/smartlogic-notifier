@@ -3,10 +3,11 @@ package notifier
 import (
 	"bytes"
 	"errors"
-	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,9 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const ExpectedContentType = "application/json"
-
 func TestHandlers(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+
 	testCases := []struct {
 		name        string
 		method      string
@@ -24,9 +25,7 @@ func TestHandlers(t *testing.T) {
 		requestBody string
 		resultCode  int
 		resultBody  string
-		err         error
-		concepts    map[string]string
-		changes     []string
+		mockService *MockService
 	}{
 		{
 			"Notify - Success",
@@ -35,9 +34,11 @@ func TestHandlers(t *testing.T) {
 			"",
 			200,
 			"{\"message\": \"Messages successfully sent to Kafka\"}",
-			nil,
-			map[string]string{},
-			[]string{},
+			&MockService{
+				notify: func(i time.Time, s string) error {
+					return nil
+				},
+			},
 		},
 		{
 			"Notify - Missing query parameters",
@@ -46,9 +47,7 @@ func TestHandlers(t *testing.T) {
 			"",
 			400,
 			"{\"message\": \"Query parameters were not set: affectedGraphId\"}",
-			nil,
-			map[string]string{},
-			[]string{},
+			&MockService{},
 		},
 		{
 			"Notify - Missing all query parameters",
@@ -57,9 +56,7 @@ func TestHandlers(t *testing.T) {
 			"",
 			400,
 			"{\"message\": \"Query parameters were not set: modifiedGraphId, affectedGraphId, lastChangeDate\"}",
-			nil,
-			map[string]string{},
-			[]string{},
+			&MockService{},
 		},
 		{
 			"Notify - Bad query parameters ",
@@ -68,9 +65,7 @@ func TestHandlers(t *testing.T) {
 			"",
 			400,
 			"{\"message\": \"Date is not in the format 2006-01-02T15:04:05.000Z\"}",
-			nil,
-			map[string]string{},
-			[]string{},
+			&MockService{},
 		},
 		{
 			"Notify - Error",
@@ -79,9 +74,11 @@ func TestHandlers(t *testing.T) {
 			"",
 			500,
 			"{\"message\": \"There was an error completing the notify\", \"error\": \"anerror\"}",
-			errors.New("anerror"),
-			map[string]string{},
-			[]string{},
+			&MockService{
+				notify: func(i time.Time, s string) error {
+					return errors.New("anerror")
+				},
+			},
 		},
 		{
 			"Force Notify - Success",
@@ -90,13 +87,7 @@ func TestHandlers(t *testing.T) {
 			`{"uuids": ["1","2","3"]}`,
 			200,
 			"Concept notification completed",
-			nil,
-			map[string]string{
-				"1": "1",
-				"2": "2",
-				"3": "3",
-			},
-			[]string{},
+			&MockService{},
 		},
 		{
 			"Force Notify - Bad Payload",
@@ -105,13 +96,7 @@ func TestHandlers(t *testing.T) {
 			`{"uuids": "1","2","3"]}`,
 			400,
 			"{\"message\": \"There was an error decoding the payload\", \"error\": \"invalid character ',' after object key\"}",
-			nil,
-			map[string]string{
-				"1": "1",
-				"2": "2",
-				"3": "3",
-			},
-			[]string{},
+			&MockService{},
 		},
 		{
 			"Get Concept - Success",
@@ -120,13 +105,11 @@ func TestHandlers(t *testing.T) {
 			``,
 			200,
 			"1",
-			nil,
-			map[string]string{
-				"1": "1",
-				"2": "2",
-				"3": "3",
+			&MockService{
+				getConcept: func(s string) ([]byte, error) {
+					return []byte("1"), nil
+				},
 			},
-			[]string{},
 		},
 		{
 			"Get Concept - Error",
@@ -134,14 +117,12 @@ func TestHandlers(t *testing.T) {
 			"/concept/11",
 			``,
 			500,
-			"{\"message\": \"There was an error retrieving the concept\", \"error\": \"Can't find concept\"}",
-			nil,
-			map[string]string{
-				"1": "1",
-				"2": "2",
-				"3": "3",
+			"{\"message\": \"There was an error retrieving the concept\", \"error\": \"can't find concept\"}",
+			&MockService{
+				getConcept: func(s string) ([]byte, error) {
+					return nil, errors.New("can't find concept")
+				},
 			},
-			[]string{},
 		},
 		{
 			"__health",
@@ -150,13 +131,7 @@ func TestHandlers(t *testing.T) {
 			``,
 			200,
 			"IGNORE",
-			errors.New("anerror"),
-			map[string]string{
-				"1": "1",
-				"2": "2",
-				"3": "3",
-			},
-			[]string{},
+			&MockService{},
 		},
 		{
 			"__build-info",
@@ -165,13 +140,7 @@ func TestHandlers(t *testing.T) {
 			``,
 			200,
 			"IGNORE",
-			errors.New("anerror"),
-			map[string]string{
-				"1": "1",
-				"2": "2",
-				"3": "3",
-			},
-			[]string{},
+			&MockService{},
 		},
 		{
 			"__gtg",
@@ -180,23 +149,16 @@ func TestHandlers(t *testing.T) {
 			``,
 			503,
 			"IGNORE",
-			nil,
-			map[string]string{
-				"1": "1",
-				"2": "2",
-				"3": "3",
-			},
-			[]string{},
+			&MockService{},
 		},
 	}
 
 	for _, d := range testCases {
 		t.Run(d.name, func(t *testing.T) {
-			mockService := NewMockService(d.concepts, d.changes, d.err)
-			handler := NewNotifierHandler(mockService)
+			handler := NewNotifierHandler(d.mockService)
 			m := mux.NewRouter()
 			handler.RegisterEndpoints(m)
-			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", time.Second)
+			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", time.Minute)
 
 			req, _ := http.NewRequest(d.method, d.url, bytes.NewBufferString(d.requestBody))
 			rr := httptest.NewRecorder()
@@ -216,11 +178,13 @@ func TestHandlers(t *testing.T) {
 }
 
 func TestHealthCheckError(t *testing.T) {
-	changes := []string{}
-	concepts := map[string]string{
-		"healthcheck-concept": "1",
+	log.SetOutput(ioutil.Discard)
+
+	mockSvc := &MockService{
+		getConcept: func(s string) ([]byte, error) {
+			return nil, errors.New("some error")
+		},
 	}
-	mockSvc := NewMockService(concepts, changes, errors.New("something bad"))
 	handler := NewNotifierHandler(mockSvc)
 	m := mux.NewRouter()
 	handler.RegisterEndpoints(m)
@@ -234,89 +198,195 @@ func TestHealthCheckError(t *testing.T) {
 	assert.NoError(t, err)
 	body := string(b)
 	assert.Equal(t, 503, rr.Code, "__gtg")
-	assert.Equal(t, "something bad", body, "__gtg")
+	assert.Equal(t, "latest Smartlogic connectivity check is unsuccessful", body, "__gtg")
 }
 
-func TestHealthCheckCache(t *testing.T) {
-	changes := []string{}
-	concepts := map[string]string{
-		"b1a492d9-dcfe-43f8-8072-17b4618a78fd": "1",
+func TestHealthServiceChecks(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+
+	tests := []struct {
+		name           string
+		url            string
+		mockService    *MockService
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name: "gtg endpoint success",
+			url:  "/__gtg",
+			mockService: &MockService{
+				getConcept: func(s string) ([]byte, error) {
+					return []byte(""), nil
+				},
+			},
+			expectedStatus: 200,
+			expectedBody:   "OK",
+		},
+		{
+			name: "health endpoint success",
+			url:  "/__health",
+			mockService: &MockService{
+				getConcept: func(s string) ([]byte, error) {
+					return []byte(""), nil
+				},
+			},
+			expectedStatus: 200,
+			expectedBody:   `"ok":true`,
+		},
+		{
+			name: "gtg endpoint failure",
+			url:  "/__gtg",
+			mockService: &MockService{
+				getConcept: func(s string) ([]byte, error) {
+					return nil, errors.New("couldn't retrieve FT organisation from Smartlogic")
+				},
+			},
+			expectedStatus: 503,
+			expectedBody:   "latest Smartlogic connectivity check is unsuccessful",
+		},
+		{
+			name: "health endpoint failure",
+			url:  "/__health",
+			mockService: &MockService{
+				getConcept: func(s string) ([]byte, error) {
+					return nil, errors.New("couldn't retrieve FT organisation from Smartlogic")
+				},
+			},
+			expectedStatus: 200, // the __health endpoint always returns 200
+			expectedBody:   `"ok":false`,
+		},
 	}
-	mockSvc := NewMockService(concepts, changes, nil)
-	handler := NewNotifierHandler(mockSvc)
-	m := mux.NewRouter()
-	handler.RegisterEndpoints(m)
-	handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", time.Second)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler := NewNotifierHandler(test.mockService)
+			m := mux.NewRouter()
+			handler.RegisterEndpoints(m)
+			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", time.Second)
 
-	// check that gtg returns ok
-	{
-		req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
-		rr := httptest.NewRecorder()
-		m.ServeHTTP(rr, req)
-		b, err := ioutil.ReadAll(rr.Body)
-		assert.NoError(t, err)
-		body := string(b)
-		assert.Equal(t, 200, rr.Code, "__gtg")
-		assert.Equal(t, "OK", body, "__gtg")
-	}
+			req, err := http.NewRequest("GET", test.url, bytes.NewBufferString(""))
+			if err != nil {
+				t.Fatalf("couldn't call %s", test.url)
+			}
+			rr := httptest.NewRecorder()
+			m.ServeHTTP(rr, req)
 
-	// tell mock to return error
-	mockSvc.(*mockService).err = errors.New("something random")
-
-	// but expect gtg to return cached ok
-	{
-		req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
-		rr := httptest.NewRecorder()
-		m.ServeHTTP(rr, req)
-		b, err := ioutil.ReadAll(rr.Body)
-		assert.NoError(t, err)
-		body := string(b)
-		assert.Equal(t, 200, rr.Code, "__gtg")
-		assert.Equal(t, "OK", body, "__gtg")
-	}
-
-	// wait for cache to clear
-	time.Sleep(time.Second)
-
-	// and expect gtg to return err
-	{
-		req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
-		rr := httptest.NewRecorder()
-		m.ServeHTTP(rr, req)
-		b, err := ioutil.ReadAll(rr.Body)
-		assert.NoError(t, err)
-		body := string(b)
-		assert.Equal(t, 503, rr.Code, "__gtg")
-		assert.Equal(t, "something random", body, "__gtg")
-	}
-
-	// tell mock to return ok
-	mockSvc.(*mockService).err = nil
-
-	// and expect gtg to return ok instantly as we don't cache failure
-	{
-		req, _ := http.NewRequest("GET", "/__gtg", bytes.NewBufferString(""))
-		rr := httptest.NewRecorder()
-		m.ServeHTTP(rr, req)
-		b, err := ioutil.ReadAll(rr.Body)
-		assert.NoError(t, err)
-		body := string(b)
-		assert.Equal(t, 200, rr.Code, "__gtg")
-		assert.Equal(t, "OK", body, "__gtg")
+			b, err := ioutil.ReadAll(rr.Body)
+			assert.NoError(t, err)
+			body := string(b)
+			assert.Equal(t, test.expectedStatus, rr.Code, test.url)
+			assert.Contains(t, body, test.expectedBody, test.url)
+		})
 	}
 }
 
-func newRequest(method, url string, body string) *http.Request {
-	var payload io.Reader
-	if body != "" {
-		payload = bytes.NewReader([]byte(body))
+func TestHealthServiceCache(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+
+	tests := []struct {
+		name                  string
+		url                   string
+		expectedFailureStatus int
+		expectedSuccessBody   string
+		expectedFailureBody   string
+	}{
+		{
+			name:                  "Test the cache for __heathcheck endpoint",
+			url:                   "__health",
+			expectedFailureStatus: 200,
+			expectedSuccessBody:   `"ok":true`,
+			expectedFailureBody:   `"ok":false`,
+		},
+		{
+			name:                  "Test the cache for __gtg endpoint",
+			url:                   "__gtg",
+			expectedFailureStatus: 503,
+			expectedSuccessBody:   "OK",
+			expectedFailureBody:   "latest Smartlogic connectivity check is unsuccessful",
+		},
 	}
-	req, err := http.NewRequest(method, url, payload)
-	req.Header = map[string][]string{
-		"Content-Type": {ExpectedContentType},
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			okay := true
+			okayMu := sync.RWMutex{}
+			getConcept := func(s string) ([]byte, error) {
+				okayMu.Lock()
+				defer okayMu.Unlock()
+				if okay {
+					return []byte(""), nil
+				}
+				return nil, errors.New("FT concept couldn't be retrieved")
+			}
+
+			mockSvc := &MockService{
+				getConcept: getConcept,
+			}
+			handler := NewNotifierHandler(mockSvc)
+			m := mux.NewRouter()
+			handler.RegisterEndpoints(m)
+			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", 2*time.Second)
+
+			// check we return ok
+			{
+				req, _ := http.NewRequest("GET", "/"+test.url, bytes.NewBufferString(""))
+				rr := httptest.NewRecorder()
+				m.ServeHTTP(rr, req)
+				b, err := ioutil.ReadAll(rr.Body)
+				assert.NoError(t, err)
+				body := string(b)
+				assert.Equal(t, 200, rr.Code, test.url)
+				assert.Contains(t, body, test.expectedSuccessBody, test.url)
+			}
+
+			// tell GetConcept to return error, mocking we couldn't get the FT concept from Smartlogic
+			okayMu.Lock()
+			okay = false
+			okayMu.Unlock()
+
+			// but expect to return cached ok
+			{
+				req, _ := http.NewRequest("GET", "/"+test.url, bytes.NewBufferString(""))
+				rr := httptest.NewRecorder()
+				m.ServeHTTP(rr, req)
+				b, err := ioutil.ReadAll(rr.Body)
+				assert.NoError(t, err)
+				body := string(b)
+				assert.Equal(t, 200, rr.Code, test.url)
+				assert.Contains(t, body, test.expectedSuccessBody, test.url)
+			}
+
+			// wait for cache to clear
+			time.Sleep(3 * time.Second)
+
+			// and expect gtg to return err
+			{
+				req, _ := http.NewRequest("GET", "/"+test.url, bytes.NewBufferString(""))
+				rr := httptest.NewRecorder()
+				m.ServeHTTP(rr, req)
+				b, err := ioutil.ReadAll(rr.Body)
+				assert.NoError(t, err)
+				body := string(b)
+				assert.Equal(t, test.expectedFailureStatus, rr.Code, test.url)
+				assert.Contains(t, body, test.expectedFailureBody, test.url)
+			}
+
+			// tell GetConcept to return okay
+			okayMu.Lock()
+			okay = true
+			okayMu.Unlock()
+			// wait for cache to clear
+			time.Sleep(3 * time.Second)
+
+			// and expect gtg to return ok
+			{
+				req, _ := http.NewRequest("GET", "/"+test.url, bytes.NewBufferString(""))
+				rr := httptest.NewRecorder()
+				m.ServeHTTP(rr, req)
+				b, err := ioutil.ReadAll(rr.Body)
+				assert.NoError(t, err)
+				body := string(b)
+				assert.Equal(t, 200, rr.Code, test.url)
+				assert.Contains(t, body, test.expectedSuccessBody, test.url)
+			}
+		})
 	}
-	if err != nil {
-		panic(err)
-	}
-	return req
 }

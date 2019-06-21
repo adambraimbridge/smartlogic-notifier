@@ -122,6 +122,7 @@ func (h *Handler) RegisterEndpoints(router *mux.Router) {
 
 func (h *Handler) RegisterAdminEndpoints(router *mux.Router, appSystemCode string, appName string, description string, smartlogicModel string, healthcheckSuccessCacheTime time.Duration) http.Handler {
 	healthService := NewHealthService(h.notifier, appSystemCode, appName, description, smartlogicModel, healthcheckSuccessCacheTime)
+	healthService.Start()
 
 	router.HandleFunc("/__health", fthealth.Handler(healthService.HealthcheckHandler()))
 	router.HandleFunc(status.GTGPath, status.NewGoodToGoHandler(healthService.GtgCheck()))
