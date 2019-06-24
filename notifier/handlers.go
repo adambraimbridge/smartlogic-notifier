@@ -82,7 +82,11 @@ func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	h.notifier.ForceNotify(pl.UUIDs, req.Header.Get(transactionidutils.TransactionIDHeader))
+	err = h.notifier.ForceNotify(pl.UUIDs, req.Header.Get(transactionidutils.TransactionIDHeader))
+	if err != nil {
+		writeJSONResponseMessage(resp, http.StatusInternalServerError, "There was an error completing the force notify")
+		return
+	}
 	writeResponseMessage(resp, http.StatusOK, "text/plain", "Concept notification completed")
 }
 

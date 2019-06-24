@@ -87,7 +87,11 @@ func TestHandlers(t *testing.T) {
 			`{"uuids": ["1","2","3"]}`,
 			200,
 			"Concept notification completed",
-			&MockService{},
+			&MockService{
+				forceNotify: func(strings []string, s string) error {
+					return nil
+				},
+			},
 		},
 		{
 			"Force Notify - Bad Payload",
@@ -97,6 +101,19 @@ func TestHandlers(t *testing.T) {
 			400,
 			"{\"message\": \"There was an error decoding the payload\", \"error\": \"invalid character ',' after object key\"}",
 			&MockService{},
+		},
+		{
+			"Force Notify - Failure",
+			"POST",
+			"/force-notify",
+			`{"uuids": ["1","2","3"]}`,
+			500,
+			"{\"message\": \"There was an error completing the force notify\"}",
+			&MockService{
+				forceNotify: func(strings []string, s string) error {
+					return errors.New("error in force notify")
+				},
+			},
 		},
 		{
 			"Get Concept - Success",
