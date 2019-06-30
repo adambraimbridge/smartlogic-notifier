@@ -3,11 +3,16 @@ package notifier
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/Financial-Times/http-handlers-go/httphandlers"
 	"github.com/Financial-Times/service-status-go/gtg"
+	status "github.com/Financial-Times/service-status-go/httphandlers"
+	"github.com/gorilla/mux"
+	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -81,6 +86,19 @@ func (hs *HealthService) updateSmartlogicSuccessCache() error {
 	return nil
 }
 
+// RegisterAdminEndpoints adds the admin endpoints to the given router
+func (hs *HealthService) RegisterAdminEndpoints(router *mux.Router) http.Handler {
+	router.HandleFunc("/__health", fthealth.Handler(hs.HealthcheckHandler()))
+	router.HandleFunc(status.GTGPath, status.NewGoodToGoHandler(hs.GtgCheck()))
+	router.HandleFunc(status.BuildInfoPath, status.BuildInfoHandler)
+
+	var monitoringRouter http.Handler = router
+	monitoringRouter = httphandlers.TransactionAwareRequestLoggingHandler(log.StandardLogger(), monitoringRouter)
+	monitoringRouter = httphandlers.HTTPMetricsHandler(metrics.DefaultRegistry, monitoringRouter)
+
+	return monitoringRouter
+}
+
 // HealthcheckHandler is resposible for __health endpoint.
 func (hs *HealthService) HealthcheckHandler() fthealth.TimedHealthCheck {
 	return fthealth.TimedHealthCheck{
@@ -115,7 +133,7 @@ func (hs *HealthService) smartlogicConnectivityCheck() (string, error) {
 	return "", nil
 }
 
-// HealthcheckHandler is responsible for __gtg endpoint.
+// GtgCheck is responsible for __gtg endpoint.
 func (hs *HealthService) GtgCheck() gtg.StatusChecker {
 	return gtg.FailFastParallelCheck([]gtg.StatusChecker{
 		func() gtg.Status {

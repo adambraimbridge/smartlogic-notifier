@@ -175,7 +175,10 @@ func TestHandlers(t *testing.T) {
 			handler := NewNotifierHandler(d.mockService)
 			m := mux.NewRouter()
 			handler.RegisterEndpoints(m)
-			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", time.Minute)
+
+			healthService := NewHealthService(d.mockService, "system-code", "app-name", "description", "testModel", time.Minute)
+			healthService.Start()
+			_ = healthService.RegisterAdminEndpoints(m)
 
 			req, _ := http.NewRequest(d.method, d.url, bytes.NewBufferString(d.requestBody))
 			rr := httptest.NewRecorder()
@@ -251,10 +254,10 @@ func TestHealthServiceChecks(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			handler := NewNotifierHandler(test.mockService)
 			m := mux.NewRouter()
-			handler.RegisterEndpoints(m)
-			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", time.Second)
+			healthService := NewHealthService(test.mockService, "system-code", "app-name", "description", "testModel", time.Second)
+			healthService.Start()
+			_ = healthService.RegisterAdminEndpoints(m)
 
 			// give time the cache of the Healthcheck service to be updated to be updated (getConcept to be called)
 			time.Sleep(time.Second)
@@ -305,10 +308,10 @@ func TestHealthServiceCache(t *testing.T) {
 			mockSvc := &MockService{
 				getConcept: getConcept,
 			}
-			handler := NewNotifierHandler(mockSvc)
 			m := mux.NewRouter()
-			handler.RegisterEndpoints(m)
-			handler.RegisterAdminEndpoints(m, "system-code", "app-name", "description", "testModel", 2*time.Second)
+			healthService := NewHealthService(mockSvc, "system-code", "app-name", "description", "testModel", 2*time.Second)
+			healthService.Start()
+			_ = healthService.RegisterAdminEndpoints(m)
 			// give time the cache of the Healthcheck service to be updated to be updated (getConcept to be called)
 			time.Sleep(1 * time.Second)
 
