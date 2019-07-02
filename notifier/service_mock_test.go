@@ -5,43 +5,29 @@ import (
 	"time"
 )
 
-type mockService struct {
-	concepts  map[string]string
-	changes   []string
-	err       error
-	sentCount int
+type MockService struct {
+	getConcept  func(string) ([]byte, error)
+	notify      func(time.Time, string) error
+	forceNotify func([]string, string) error
 }
 
-func NewMockService(concepts map[string]string, changes []string, err error) Servicer {
-	return &mockService{
-		concepts: concepts,
-		changes:  changes,
-		err:      err,
+func (s *MockService) GetConcept(uuid string) ([]byte, error) {
+	if s.getConcept != nil {
+		return s.getConcept(uuid)
 	}
+	return nil, errors.New("not implemented")
 }
 
-func (s *mockService) GetConcept(uuid string) ([]byte, error) {
-	if s.err != nil {
-		return nil, s.err
+func (s *MockService) Notify(lastChange time.Time, transactionID string) error {
+	if s.notify != nil {
+		return s.notify(lastChange, transactionID)
 	}
-
-	c, ok := s.concepts[uuid]
-	if !ok {
-		return nil, errors.New("Can't find concept")
-	}
-
-	return []byte(c), nil
+	return errors.New("not implemented")
 }
 
-func (s *mockService) Notify(lastChange time.Time, transactionID string) error {
-	return s.ForceNotify(s.changes, transactionID)
-}
-
-func (s *mockService) ForceNotify(UUIDs []string, transactionID string) error {
-	for _, v := range UUIDs {
-		if _, ok := s.concepts[v]; ok {
-			s.sentCount++
-		}
+func (s *MockService) ForceNotify(uuids []string, transactionID string) error {
+	if s.forceNotify != nil {
+		return s.forceNotify(uuids, transactionID)
 	}
-	return s.err
+	return errors.New("not implemented")
 }

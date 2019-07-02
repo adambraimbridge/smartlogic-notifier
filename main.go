@@ -130,14 +130,10 @@ func main() {
 
 		handler := notifier.NewNotifierHandler(service)
 		handler.RegisterEndpoints(router)
-		monitoringRouter := handler.RegisterAdminEndpoints(
-			router,
-			*appSystemCode,
-			*appName,
-			appDescription,
-			*smartlogicModel,
-			smartlogicHealthCacheDuration,
-		)
+
+		healthService := notifier.NewHealthService(service, *appSystemCode, *appName, appDescription, *smartlogicModel, smartlogicHealthCacheDuration)
+		healthService.Start()
+		monitoringRouter := healthService.RegisterAdminEndpoints(router)
 
 		go func() {
 			if err := http.ListenAndServe(":"+*port, monitoringRouter); err != nil {

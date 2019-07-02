@@ -7,13 +7,9 @@ import (
 
 	"time"
 
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
-	"github.com/Financial-Times/http-handlers-go/httphandlers"
-	status "github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/Financial-Times/transactionid-utils-go"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -82,7 +78,11 @@ func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	h.notifier.ForceNotify(pl.UUIDs, req.Header.Get(transactionidutils.TransactionIDHeader))
+	err = h.notifier.ForceNotify(pl.UUIDs, req.Header.Get(transactionidutils.TransactionIDHeader))
+	if err != nil {
+		writeJSONResponseMessage(resp, http.StatusInternalServerError, "There was an error completing the force notify")
+		return
+	}
 	writeResponseMessage(resp, http.StatusOK, "text/plain", "Concept notification completed")
 }
 
@@ -118,20 +118,6 @@ func (h *Handler) RegisterEndpoints(router *mux.Router) {
 	router.Handle("/notify", notifyHandler)
 	router.Handle("/force-notify", forceNotifyHandler)
 	router.Handle("/concept/{uuid}", getConceptHandler)
-}
-
-func (h *Handler) RegisterAdminEndpoints(router *mux.Router, appSystemCode string, appName string, description string, smartlogicModel string, healthcheckSuccessCacheTime time.Duration) http.Handler {
-	healthService := NewHealthService(h.notifier, appSystemCode, appName, description, smartlogicModel, healthcheckSuccessCacheTime)
-
-	router.HandleFunc("/__health", fthealth.Handler(healthService.HealthcheckHandler()))
-	router.HandleFunc(status.GTGPath, status.NewGoodToGoHandler(healthService.GtgCheck()))
-	router.HandleFunc(status.BuildInfoPath, status.BuildInfoHandler)
-
-	var monitoringRouter http.Handler = router
-	monitoringRouter = httphandlers.TransactionAwareRequestLoggingHandler(log.StandardLogger(), monitoringRouter)
-	monitoringRouter = httphandlers.HTTPMetricsHandler(metrics.DefaultRegistry, monitoringRouter)
-
-	return monitoringRouter
 }
 
 func writeResponseMessage(w http.ResponseWriter, statusCode int, contentType string, message string) {
