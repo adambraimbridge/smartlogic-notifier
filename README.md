@@ -8,21 +8,16 @@ Entrypoint for concept publish notifications from the Smartlogic Semaphore syste
 
 ## Installation
 
-Download the source code, dependencies and test dependencies:
+Download the source code, dependencies and build the binary:
 
-        go get -u github.com/kardianos/govendor
-        go get -u github.com/Financial-Times/smartlogic-notifier
+        go get github.com/Financial-Times/smartlogic-notifier
         cd $GOPATH/src/github.com/Financial-Times/smartlogic-notifier
-        govendor sync
-        go build .
-
-## Running locally
-
-1. Run the tests and install the binary:
-
-        govendor sync
-        govendor test -v -race
         go install
+
+To run the tests:
+
+        go test -v -race ./...
+
 
 2. Run the binary (using the `help` flag to see the available optional arguments):
 
@@ -30,15 +25,22 @@ Download the source code, dependencies and test dependencies:
 
 Options:
 
-    --app-system-code="smartlogic-notifier"      System Code of the application ($APP_SYSTEM_CODE)
-    --app-name="Smartlogic Notifier"                   Application name ($APP_NAME)
-    --port="8080"                                                     Port to listen on ($APP_PORT)
-
+        --app-system-code="smartlogic-notifier"   System Code of the application ($APP_SYSTEM_CODE)
+        --app-name="Smartlogic Notifier"          Application name ($APP_NAME)
+        --kafkaAddresses=""                       Comma separated list of Kafka broker addresses ($KAFKA_ADDRESSES)
+        --kafkaTopic=""                           Kafka topic to send messages to ($KAFKA_TOPIC)
+        --smartlogicBaseURL=""                    Base URL for the Smartlogic instance ($SMARTLOGIC_BASE_URL)
+        --smartlogicModel=""                      Smartlogic model to read from ($SMARTLOGIC_MODEL)
+        --smartlogicAPIKey=""                     Smartlogic model to read from ($SMARTLOGIC_API_KEY)
+        --port="8080"                             Port to listen on ($APP_PORT)
+        --logLevel="info"                         Level of logging to be shown ($LOG_LEVEL)
+        --healthcheckSuccessCacheTime="1m"        How long to cache a successful Smartlogic response for ($HEALTHCHECK_SUCCESS_CACHE_TIME)
+        --conceptUriPrefix=""                     The concept URI prefix to be added before the UUID part of the Smartlogic request path ($CONCEPT_URI_PREFIX)
 
 
 ## Build and deployment
 
-* Built by Docker Hub on merge to master: [coco/smartlogic-notifier](https://hub.docker.com/r/coco/smartlogic-notifier/)
+* Built by Jenkins and uploaded to Docker Hub on merge to master: [coco/smartlogic-notifier](https://hub.docker.com/r/coco/smartlogic-notifier/)
 * CI provided by CircleCI: [smartlogic-notifier](https://circleci.com/gh/Financial-Times/smartlogic-notifier)
 
 ## Service endpoints
