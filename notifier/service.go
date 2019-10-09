@@ -7,7 +7,7 @@ import (
 
 	"github.com/Financial-Times/kafka-client-go/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
-	"github.com/Financial-Times/transactionid-utils-go"
+	transactionidutils "github.com/Financial-Times/transactionid-utils-go"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -15,6 +15,7 @@ type Servicer interface {
 	GetConcept(uuid string) ([]byte, error)
 	Notify(lastChange time.Time, transactionID string) error
 	ForceNotify(UUIDs []string, transactionID string) error
+	CheckKafkaConnectivity() error
 }
 
 type Service struct {
@@ -81,4 +82,8 @@ func (s *Service) ForceNotify(UUIDs []string, transactionID string) error {
 		log.WithField("uuids", UUIDs).Info("Completed notification of concepts")
 	}
 	return nil
+}
+
+func (s *Service) CheckKafkaConnectivity() error {
+	return s.kafka.ConnectivityCheck()
 }
