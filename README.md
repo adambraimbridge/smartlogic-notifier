@@ -25,17 +25,17 @@ To run the tests:
 
 Options:
 
-        --app-system-code="smartlogic-notifier"   System Code of the application ($APP_SYSTEM_CODE)
-        --app-name="Smartlogic Notifier"          Application name ($APP_NAME)
-        --kafkaAddresses=""                       Comma separated list of Kafka broker addresses ($KAFKA_ADDRESSES)
-        --kafkaTopic=""                           Kafka topic to send messages to ($KAFKA_TOPIC)
-        --smartlogicBaseURL=""                    Base URL for the Smartlogic instance ($SMARTLOGIC_BASE_URL)
-        --smartlogicModel=""                      Smartlogic model to read from ($SMARTLOGIC_MODEL)
-        --smartlogicAPIKey=""                     Smartlogic model to read from ($SMARTLOGIC_API_KEY)
-        --port="8080"                             Port to listen on ($APP_PORT)
-        --logLevel="info"                         Level of logging to be shown ($LOG_LEVEL)
-        --healthcheckSuccessCacheTime="1m"        How long to cache a successful Smartlogic response for ($HEALTHCHECK_SUCCESS_CACHE_TIME)
-        --conceptUriPrefix=""                     The concept URI prefix to be added before the UUID part of the Smartlogic request path ($CONCEPT_URI_PREFIX)
+        --app-system-code="smartlogic-notifier"         System Code of the application ($APP_SYSTEM_CODE)
+        --app-name="Smartlogic Notifier"                Application name ($APP_NAME)
+        --kafkaAddresses="localhost:9092"               Comma separated list of Kafka broker addresses ($KAFKA_ADDRESSES)
+        --kafkaTopic="SmartlogicConcept"                Kafka topic to send messages to ($KAFKA_TOPIC)
+        --smartlogicBaseURL=""                          Base URL for the Smartlogic instance ($SMARTLOGIC_BASE_URL)
+        --smartlogicModel=""                            Smartlogic model to read from ($SMARTLOGIC_MODEL)
+        --smartlogicAPIKey=""                           Smartlogic model to read from ($SMARTLOGIC_API_KEY)
+        --port="8080"                                   Port to listen on ($APP_PORT)
+        --logLevel="info"                               Level of logging to be shown ($LOG_LEVEL)
+        --healthcheckSuccessCacheTime="1m"              How long to cache a successful Smartlogic response for ($HEALTHCHECK_SUCCESS_CACHE_TIME)
+        --conceptUriPrefix="http://www.ft.com/thing/"   The concept URI prefix to be added before the UUID part of the Smartlogic request path ($CONCEPT_URI_PREFIX)
 
 
 ## Build and deployment

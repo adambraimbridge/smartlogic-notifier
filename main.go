@@ -7,14 +7,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gorilla/mux"
+	cli "github.com/jawher/mow.cli"
+	"github.com/sethgrid/pester"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/Financial-Times/kafka-client-go/kafka"
 	"github.com/Financial-Times/smartlogic-notifier/notifier"
 	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
-	"github.com/gorilla/mux"
-	"github.com/jawher/mow.cli"
-	_ "github.com/joho/godotenv/autoload"
-	"github.com/sethgrid/pester"
-	log "github.com/sirupsen/logrus"
 )
 
 const appDescription = "Entrypoint for concept publish notifications from the Smartlogic Semaphore system"
@@ -39,12 +39,14 @@ func main() {
 
 	kafkaAddresses := app.String(cli.StringOpt{
 		Name:   "kafkaAddresses",
+		Value:  "localhost:9092",
 		Desc:   "Comma separated list of Kafka broker addresses",
 		EnvVar: "KAFKA_ADDRESSES",
 	})
 
 	kafkaTopic := app.String(cli.StringOpt{
 		Name:   "kafkaTopic",
+		Value:  "SmartlogicConcept",
 		Desc:   "Kafka topic to send messages to",
 		EnvVar: "KAFKA_TOPIC",
 	})
@@ -90,6 +92,7 @@ func main() {
 
 	conceptUriPrefix := app.String(cli.StringOpt{
 		Name:   "conceptUriPrefix",
+		Value:  "http://www.ft.com/thing/",
 		Desc:   "The concept URI prefix to be added before the UUID part of the Smartlogic request path",
 		EnvVar: "CONCEPT_URI_PREFIX",
 	})

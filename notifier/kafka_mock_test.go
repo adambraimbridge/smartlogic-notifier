@@ -40,7 +40,14 @@ type mockKafkaClient struct {
 	sentCount int
 }
 
+func (kf *mockKafkaClient) ConnectivityCheck() error {
+	return nil
+}
+
 func (kf *mockKafkaClient) SendMessage(message kafka.FTMessage) error {
 	kf.sentCount++
 	return nil
+}
+
+func (kf *mockKafkaClient) Shutdown() {
 }
