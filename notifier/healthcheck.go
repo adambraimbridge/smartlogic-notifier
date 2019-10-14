@@ -12,12 +12,17 @@ import (
 	"github.com/Financial-Times/service-status-go/gtg"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/gorilla/mux"
-	"github.com/rcrowley/go-metrics"
+	metrics "github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
 )
 
 // FTUuid is the uuid of the organisation Financial Times in Smartlogic.
 const FTUuid = "b1a492d9-dcfe-43f8-8072-17b4618a78fd"
+
+const (
+	businessImpact = "Editorial updates of concepts in Smartlogic will not be ingested into UPP"
+	panicGuideURL  = "https://runbooks.in.ft.com/smartlogic-notifier"
+)
 
 // HealthService is responsible for gtg and health checks.
 type HealthService struct {
@@ -49,6 +54,7 @@ func NewHealthService(notifier Servicer, appSystemCode string, appName string, d
 		notifier: notifier,
 	}
 	service.Checks = []fthealth.Check{
+		service.kafkaHealthCheck(),
 		service.smartlogicHealthCheck(),
 	}
 	return service
@@ -114,12 +120,23 @@ func (hs *HealthService) HealthcheckHandler() fthealth.TimedHealthCheck {
 
 func (hs *HealthService) smartlogicHealthCheck() fthealth.Check {
 	return fthealth.Check{
-		BusinessImpact:   "Editorial updates of concepts will not be written into UPP",
+		BusinessImpact:   businessImpact,
 		Name:             fmt.Sprintf("Check connectivity to Smartlogic model %s", hs.config.smartlogicModel),
-		PanicGuide:       fmt.Sprintf("https://dewey.ft.com/%s.html", hs.config.appSystemCode),
+		PanicGuide:       panicGuideURL,
 		Severity:         3,
 		TechnicalSummary: `Check that Smartlogic is healthy and the API is accessible.  If it is, restart this service.`,
 		Checker:          hs.smartlogicConnectivityCheck,
+	}
+}
+
+func (hs *HealthService) kafkaHealthCheck() fthealth.Check {
+	return fthealth.Check{
+		BusinessImpact:   businessImpact,
+		Name:             "Check connectivity to Kafka",
+		PanicGuide:       panicGuideURL,
+		Severity:         3,
+		TechnicalSummary: `Cannot connect to Kafka. Verify that Kafka is healthy in this cluster.`,
+		Checker:          hs.checkKafkaConnectivity,
 	}
 }
 
@@ -133,16 +150,25 @@ func (hs *HealthService) smartlogicConnectivityCheck() (string, error) {
 	return "", nil
 }
 
+func (hs *HealthService) checkKafkaConnectivity() (string, error) {
+	err := hs.notifier.CheckKafkaConnectivity()
+	if err != nil {
+		clientError := fmt.Sprint("Error verifying open connection to Kafka")
+		log.WithError(err).Error(clientError)
+		return "Error connecting with Kafka", errors.New(clientError)
+	} else {
+		return "Successfully connected to Kafka", nil
+	}
+}
+
 // GtgCheck is responsible for __gtg endpoint.
 func (hs *HealthService) GtgCheck() gtg.StatusChecker {
-	return gtg.FailFastParallelCheck([]gtg.StatusChecker{
-		func() gtg.Status {
-			if _, err := hs.smartlogicConnectivityCheck(); err != nil {
-				return gtg.Status{GoodToGo: false, Message: err.Error()}
-			}
-			return gtg.Status{GoodToGo: true}
-		},
-	})
+	var sc []gtg.StatusChecker
+	for _, c := range hs.Checks {
+		sc = append(sc, gtgCheck(c.Checker))
+	}
+
+	return gtg.FailFastParallelCheck(sc)
 }
 
 func (hs *HealthService) getCheckSuccessCache() bool {
@@ -155,4 +181,13 @@ func (hs *HealthService) setCheckSuccessCache(val bool) {
 	hs.Lock()
 	defer hs.Unlock()
 	hs.checkSuccessCache = val
+}
+
+func gtgCheck(handler func() (string, error)) gtg.StatusChecker {
+	return func() gtg.Status {
+		if _, err := handler(); err != nil {
+			return gtg.Status{GoodToGo: false, Message: err.Error()}
+		}
+		return gtg.Status{GoodToGo: true}
+	}
 }

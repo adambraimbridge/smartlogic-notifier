@@ -214,6 +214,9 @@ func TestHealthServiceChecks(t *testing.T) {
 				getConcept: func(s string) ([]byte, error) {
 					return []byte(""), nil
 				},
+				checkKafkaConnectivity: func() error {
+					return nil
+				},
 			},
 			expectedStatus: 200,
 			expectedBody:   "OK",
@@ -225,31 +228,59 @@ func TestHealthServiceChecks(t *testing.T) {
 				getConcept: func(s string) ([]byte, error) {
 					return []byte(""), nil
 				},
+				checkKafkaConnectivity: func() error {
+					return nil
+				},
 			},
 			expectedStatus: 200,
-			expectedBody:   `"ok":true`,
+			expectedBody:   `"ok":true}`,
 		},
 		{
-			name: "gtg endpoint failure",
+			name: "gtg endpoint Smartlogic failure",
 			url:  "__gtg",
 			mockService: &MockService{
 				getConcept: func(s string) ([]byte, error) {
 					return nil, errors.New("couldn't retrieve FT organisation from Smartlogic")
+				},
+				checkKafkaConnectivity: func() error {
+					return nil
 				},
 			},
 			expectedStatus: 503,
 			expectedBody:   "latest Smartlogic connectivity check is unsuccessful",
 		},
 		{
-			name: "health endpoint failure",
-			url:  "__health",
+			name: "gtg endpoint Kafka failure",
+			url:  "__gtg",
 			mockService: &MockService{
 				getConcept: func(s string) ([]byte, error) {
-					return nil, errors.New("couldn't retrieve FT organisation from Smartlogic")
+					return []byte(""), nil
+				},
+			},
+			expectedStatus: 503,
+			expectedBody:   "Error verifying open connection to Kafka",
+		},
+		{
+			name: "health endpoint Smartlogic failure",
+			url:  "__health",
+			mockService: &MockService{
+				checkKafkaConnectivity: func() error {
+					return nil
 				},
 			},
 			expectedStatus: 200, // the __health endpoint always returns 200
-			expectedBody:   `"ok":false`,
+			expectedBody:   `"ok":false,"severity":3}`,
+		},
+		{
+			name: "health endpoint Kafka failure",
+			url:  "__health",
+			mockService: &MockService{
+				getConcept: func(s string) ([]byte, error) {
+					return []byte(""), nil
+				},
+			},
+			expectedStatus: 200, // the __health endpoint always returns 200
+			expectedBody:   `"ok":false,"severity":3}`,
 		},
 	}
 	for _, test := range tests {
@@ -307,6 +338,9 @@ func TestHealthServiceCache(t *testing.T) {
 
 			mockSvc := &MockService{
 				getConcept: getConcept,
+				checkKafkaConnectivity: func() error {
+					return nil
+				},
 			}
 			m := mux.NewRouter()
 			healthService := NewHealthService(mockSvc, "system-code", "app-name", "description", "testModel", 2*time.Second)
