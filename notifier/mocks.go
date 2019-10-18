@@ -2,22 +2,15 @@ package notifier
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/Financial-Times/kafka-client-go/kafka"
-	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
 )
 
 type mockSmartlogicClient struct {
-	concepts        map[string]string
-	changedConcepts []string
-}
-
-func NewMockSmartlogicClient(concepts map[string]string, changedConcepts []string) smartlogic.Clienter {
-	return &mockSmartlogicClient{
-		concepts:        concepts,
-		changedConcepts: changedConcepts,
-	}
+	concepts                  map[string]string
+	getChangedConceptListFunc func(changeDate time.Time) ([]string, error)
 }
 
 func (sl *mockSmartlogicClient) AccessToken() string {
@@ -27,16 +20,20 @@ func (sl *mockSmartlogicClient) AccessToken() string {
 func (sl *mockSmartlogicClient) GetConcept(uuid string) ([]byte, error) {
 	c, ok := sl.concepts[uuid]
 	if !ok {
-		return nil, errors.New("Can't find concept")
+		return nil, errors.New("can't find concept")
 	}
 	return []byte(c), nil
 }
 
 func (sl *mockSmartlogicClient) GetChangedConceptList(changeDate time.Time) ([]string, error) {
-	return sl.changedConcepts, nil
+	if sl.getChangedConceptListFunc != nil {
+		return sl.getChangedConceptListFunc(changeDate)
+	}
+	return nil, errors.New("not implemented")
 }
 
 type mockKafkaClient struct {
+	mu        sync.Mutex
 	sentCount int
 }
 
@@ -45,6 +42,9 @@ func (kf *mockKafkaClient) ConnectivityCheck() error {
 }
 
 func (kf *mockKafkaClient) SendMessage(message kafka.FTMessage) error {
+	kf.mu.Lock()
+	defer kf.mu.Unlock()
+
 	kf.sentCount++
 	return nil
 }
@@ -52,37 +52,66 @@ func (kf *mockKafkaClient) SendMessage(message kafka.FTMessage) error {
 func (kf *mockKafkaClient) Shutdown() {
 }
 
-type MockService struct {
+func (kf *mockKafkaClient) getSentCount() int {
+	kf.mu.Lock()
+	defer kf.mu.Unlock()
+	return kf.sentCount
+}
+
+type mockService struct {
 	getConcept             func(string) ([]byte, error)
 	notify                 func(time.Time, string) error
 	forceNotify            func([]string, string) error
 	checkKafkaConnectivity func() error
 }
 
-func (s *MockService) GetConcept(uuid string) ([]byte, error) {
+func (s *mockService) GetConcept(uuid string) ([]byte, error) {
 	if s.getConcept != nil {
 		return s.getConcept(uuid)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (s *MockService) Notify(lastChange time.Time, transactionID string) error {
+func (s *mockService) Notify(lastChange time.Time, transactionID string) error {
 	if s.notify != nil {
 		return s.notify(lastChange, transactionID)
 	}
 	return errors.New("not implemented")
 }
 
-func (s *MockService) ForceNotify(uuids []string, transactionID string) error {
+func (s *mockService) ForceNotify(uuids []string, transactionID string) error {
 	if s.forceNotify != nil {
 		return s.forceNotify(uuids, transactionID)
 	}
 	return errors.New("not implemented")
 }
 
-func (s *MockService) CheckKafkaConnectivity() error {
+func (s *mockService) CheckKafkaConnectivity() error {
 	if s.checkKafkaConnectivity != nil {
 		return s.checkKafkaConnectivity()
 	}
 	return errors.New("not implemented")
+}
+
+type mockTicker struct {
+	ticker *time.Ticker
+
+	mu    sync.Mutex
+	ticks int
+}
+
+func (t *mockTicker) Tick() {
+	<-t.ticker.C
+	t.mu.Lock()
+	t.ticks++
+	t.mu.Unlock()
+}
+
+func (t *mockTicker) Stop() {
+}
+
+func (t *mockTicker) getTicks() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.ticks
 }
