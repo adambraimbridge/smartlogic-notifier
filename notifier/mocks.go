@@ -51,3 +51,38 @@ func (kf *mockKafkaClient) SendMessage(message kafka.FTMessage) error {
 
 func (kf *mockKafkaClient) Shutdown() {
 }
+
+type MockService struct {
+	getConcept             func(string) ([]byte, error)
+	notify                 func(time.Time, string) error
+	forceNotify            func([]string, string) error
+	checkKafkaConnectivity func() error
+}
+
+func (s *MockService) GetConcept(uuid string) ([]byte, error) {
+	if s.getConcept != nil {
+		return s.getConcept(uuid)
+	}
+	return nil, errors.New("not implemented")
+}
+
+func (s *MockService) Notify(lastChange time.Time, transactionID string) error {
+	if s.notify != nil {
+		return s.notify(lastChange, transactionID)
+	}
+	return errors.New("not implemented")
+}
+
+func (s *MockService) ForceNotify(uuids []string, transactionID string) error {
+	if s.forceNotify != nil {
+		return s.forceNotify(uuids, transactionID)
+	}
+	return errors.New("not implemented")
+}
+
+func (s *MockService) CheckKafkaConnectivity() error {
+	if s.checkKafkaConnectivity != nil {
+		return s.checkKafkaConnectivity()
+	}
+	return errors.New("not implemented")
+}
