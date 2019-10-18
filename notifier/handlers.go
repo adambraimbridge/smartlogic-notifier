@@ -152,6 +152,8 @@ func (h *Handler) processNotifyRequests() {
 	for {
 		<-h.ticker.C
 
+		log.Info("tick")
+
 		n := notificationRequest{notifySince: maxTimeValue}
 		for req := range h.requestCh {
 			if n.notifySince.After(req.notifySince) {
