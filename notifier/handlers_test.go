@@ -25,15 +25,15 @@ func TestHandlers(t *testing.T) {
 		requestBody string
 		resultCode  int
 		resultBody  string
-		mockService *MockService
+		mockService *mockService
 	}{
 		{
 			name:       "Notify - Success",
 			method:     "GET",
 			url:        "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=2017-05-31T13:00:00.000Z",
+			resultBody: "{\"message\": \"Concepts successfully ingested\"}",
 			resultCode: 200,
-			resultBody: "{\"message\": \"Messages successfully sent to Kafka\"}",
-			mockService: &MockService{
+			mockService: &mockService{
 				notify: func(i time.Time, s string) error {
 					return nil
 				},
@@ -45,7 +45,7 @@ func TestHandlers(t *testing.T) {
 			url:         "/notify?modifiedGraphId=2&lastChangeDate=2017-05-31T13:00:00.000Z",
 			resultCode:  400,
 			resultBody:  "{\"message\": \"Query parameters were not set: affectedGraphId\"}",
-			mockService: &MockService{},
+			mockService: &mockService{},
 		},
 		{
 			name:        "Notify - Missing all query parameters",
@@ -53,7 +53,7 @@ func TestHandlers(t *testing.T) {
 			url:         "/notify",
 			resultCode:  400,
 			resultBody:  "{\"message\": \"Query parameters were not set: modifiedGraphId, affectedGraphId, lastChangeDate\"}",
-			mockService: &MockService{},
+			mockService: &mockService{},
 		},
 		{
 			name:        "Notify - Bad query parameters ",
@@ -61,15 +61,15 @@ func TestHandlers(t *testing.T) {
 			url:         "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=notadate",
 			resultCode:  400,
 			resultBody:  "{\"message\": \"Date is not in the format 2006-01-02T15:04:05.000Z\"}",
-			mockService: &MockService{},
+			mockService: &mockService{},
 		},
 		{
 			name:       "Notify - Error",
 			method:     "GET",
 			url:        "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=2017-05-31T13:00:00.000Z",
-			resultCode: 500,
-			resultBody: "{\"message\": \"There was an error completing the notify\", \"error\": \"anerror\"}",
-			mockService: &MockService{
+			resultBody: "{\"message\": \"Concepts successfully ingested\"}",
+			resultCode: 200,
+			mockService: &mockService{
 				notify: func(i time.Time, s string) error {
 					return errors.New("anerror")
 				},
@@ -82,7 +82,7 @@ func TestHandlers(t *testing.T) {
 			requestBody: `{"uuids": ["1","2","3"]}`,
 			resultCode:  200,
 			resultBody:  "Concept notification completed",
-			mockService: &MockService{
+			mockService: &mockService{
 				forceNotify: func(strings []string, s string) error {
 					return nil
 				},
@@ -95,7 +95,7 @@ func TestHandlers(t *testing.T) {
 			requestBody: `{"uuids": "1","2","3"]}`,
 			resultCode:  400,
 			resultBody:  "{\"message\": \"There was an error decoding the payload\", \"error\": \"invalid character ',' after object key\"}",
-			mockService: &MockService{},
+			mockService: &mockService{},
 		},
 		{
 			name:        "Force Notify - Failure",
@@ -104,7 +104,7 @@ func TestHandlers(t *testing.T) {
 			requestBody: `{"uuids": ["1","2","3"]}`,
 			resultCode:  500,
 			resultBody:  "{\"message\": \"There was an error completing the force notify\"}",
-			mockService: &MockService{
+			mockService: &mockService{
 				forceNotify: func(strings []string, s string) error {
 					return errors.New("error in force notify")
 				},
@@ -116,7 +116,7 @@ func TestHandlers(t *testing.T) {
 			url:        "/concept/1",
 			resultCode: 200,
 			resultBody: "1",
-			mockService: &MockService{
+			mockService: &mockService{
 				getConcept: func(s string) ([]byte, error) {
 					return []byte("1"), nil
 				},
@@ -128,7 +128,7 @@ func TestHandlers(t *testing.T) {
 			url:        "/concept/11",
 			resultCode: 500,
 			resultBody: "{\"message\": \"There was an error retrieving the concept\", \"error\": \"can't find concept\"}",
-			mockService: &MockService{
+			mockService: &mockService{
 				getConcept: func(s string) ([]byte, error) {
 					return nil, errors.New("can't find concept")
 				},
@@ -140,7 +140,7 @@ func TestHandlers(t *testing.T) {
 			url:         "/__health",
 			resultCode:  200,
 			resultBody:  "IGNORE",
-			mockService: &MockService{},
+			mockService: &mockService{},
 		},
 		{
 			name:        "__build-info",
@@ -148,7 +148,7 @@ func TestHandlers(t *testing.T) {
 			url:         "/__build-info",
 			resultCode:  200,
 			resultBody:  "IGNORE",
-			mockService: &MockService{},
+			mockService: &mockService{},
 		},
 		{
 			name:        "__gtg",
@@ -156,7 +156,7 @@ func TestHandlers(t *testing.T) {
 			url:         "/__gtg",
 			resultCode:  503,
 			resultBody:  "IGNORE",
-			mockService: &MockService{},
+			mockService: &mockService{},
 		},
 	}
 
@@ -187,20 +187,106 @@ func TestHandlers(t *testing.T) {
 
 }
 
+func TestConcurrentNotify(t *testing.T) {
+	const ticks = 1
+	testCases := []struct {
+		name                           string
+		notificationTimes              []string
+		duration                       time.Duration
+		expectedChangedConceptListDate string
+		expectedKafkaMsgCount          int
+	}{
+		{
+			name: "single request",
+			notificationTimes: []string{
+				"13:00:04.000Z",
+			},
+			duration:                       50 * time.Millisecond,
+			expectedChangedConceptListDate: "13:00:03.990Z",
+			expectedKafkaMsgCount:          ticks,
+		},
+		{
+			name: "10 requests",
+			notificationTimes: []string{
+				"13:00:00.000Z",
+				"13:00:01.000Z",
+				"13:00:02.000Z",
+				"13:00:03.000Z",
+				"13:00:04.000Z",
+				"13:00:05.000Z",
+				"13:00:06.000Z",
+				"13:00:07.000Z",
+				"13:00:08.000Z",
+				"13:00:09.000Z",
+			},
+			expectedChangedConceptListDate: "12:59:59.990Z",
+			duration:                       50 * time.Millisecond,
+			expectedKafkaMsgCount:          ticks,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			kc := &mockKafkaClient{}
+			sl := &mockSmartlogicClient{
+				concepts: map[string]string{
+					"uuid1": "concept1",
+					"uuid2": "concept2",
+				},
+				getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+					assert.Equal(t, test.expectedChangedConceptListDate, changeDate.Format("15:04:05.000Z"))
+
+					return []string{"uuid2"}, nil
+				},
+			}
+
+			service := NewNotifierService(kc, sl)
+
+			tickerInterval := test.duration / (ticks + 1)
+			handler := NewNotifierHandler(service, WithTickerInterval(tickerInterval))
+
+			m := mux.NewRouter()
+			handler.RegisterEndpoints(m)
+
+			var reqs []*http.Request
+			for _, t := range test.notificationTimes {
+				url := "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=2017-05-31T" + t
+				req, _ := http.NewRequest("GET", url, nil)
+				reqs = append(reqs, req)
+			}
+
+			for _, req := range reqs {
+				go func(r *http.Request) {
+					start := time.Now()
+					recorder := httptest.NewRecorder()
+					m.ServeHTTP(recorder, r)
+					end := time.Now()
+
+					assert.WithinDuration(t, start, end, tickerInterval)
+				}(req)
+			}
+
+			time.Sleep(test.duration)
+
+			assert.Equal(t, test.expectedKafkaMsgCount, kc.getSentCount())
+		})
+	}
+}
+
 func TestHealthServiceChecks(t *testing.T) {
 	log.SetOutput(ioutil.Discard)
 
 	tests := []struct {
 		name           string
 		url            string
-		mockService    *MockService
+		mockService    *mockService
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "gtg endpoint success",
 			url:  "__gtg",
-			mockService: &MockService{
+			mockService: &mockService{
 				getConcept: func(s string) ([]byte, error) {
 					return []byte(""), nil
 				},
@@ -214,7 +300,7 @@ func TestHealthServiceChecks(t *testing.T) {
 		{
 			name: "health endpoint success",
 			url:  "__health",
-			mockService: &MockService{
+			mockService: &mockService{
 				getConcept: func(s string) ([]byte, error) {
 					return []byte(""), nil
 				},
@@ -228,7 +314,7 @@ func TestHealthServiceChecks(t *testing.T) {
 		{
 			name: "gtg endpoint Smartlogic failure",
 			url:  "__gtg",
-			mockService: &MockService{
+			mockService: &mockService{
 				getConcept: func(s string) ([]byte, error) {
 					return nil, errors.New("couldn't retrieve FT organisation from Smartlogic")
 				},
@@ -242,7 +328,7 @@ func TestHealthServiceChecks(t *testing.T) {
 		{
 			name: "gtg endpoint Kafka failure",
 			url:  "__gtg",
-			mockService: &MockService{
+			mockService: &mockService{
 				getConcept: func(s string) ([]byte, error) {
 					return []byte(""), nil
 				},
@@ -253,7 +339,7 @@ func TestHealthServiceChecks(t *testing.T) {
 		{
 			name: "health endpoint Smartlogic failure",
 			url:  "__health",
-			mockService: &MockService{
+			mockService: &mockService{
 				checkKafkaConnectivity: func() error {
 					return nil
 				},
@@ -264,7 +350,7 @@ func TestHealthServiceChecks(t *testing.T) {
 		{
 			name: "health endpoint Kafka failure",
 			url:  "__health",
-			mockService: &MockService{
+			mockService: &mockService{
 				getConcept: func(s string) ([]byte, error) {
 					return []byte(""), nil
 				},
@@ -327,7 +413,7 @@ func TestHealthServiceCache(t *testing.T) {
 				return nil, errors.New("FT concept couldn't be retrieved")
 			}
 
-			mockSvc := &MockService{
+			mockSvc := &mockService{
 				getConcept: getConcept,
 				checkKafkaConnectivity: func() error {
 					return nil
