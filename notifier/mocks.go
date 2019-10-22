@@ -11,6 +11,9 @@ import (
 type mockSmartlogicClient struct {
 	concepts                  map[string]string
 	getChangedConceptListFunc func(changeDate time.Time) ([]string, error)
+
+	mu                          sync.Mutex
+	changedConceptListCallCount int
 }
 
 func (sl *mockSmartlogicClient) AccessToken() string {
@@ -26,10 +29,20 @@ func (sl *mockSmartlogicClient) GetConcept(uuid string) ([]byte, error) {
 }
 
 func (sl *mockSmartlogicClient) GetChangedConceptList(changeDate time.Time) ([]string, error) {
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
+	sl.changedConceptListCallCount++
+
 	if sl.getChangedConceptListFunc != nil {
 		return sl.getChangedConceptListFunc(changeDate)
 	}
 	return nil, errors.New("not implemented")
+}
+
+func (sl *mockSmartlogicClient) getChangedConceptListCallCount() int {
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
+	return sl.changedConceptListCallCount
 }
 
 type mockKafkaClient struct {

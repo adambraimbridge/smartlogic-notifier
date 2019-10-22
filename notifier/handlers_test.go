@@ -362,6 +362,63 @@ func TestProcessingNotifyRequestsDoesNotBlock(t *testing.T) {
 	}
 }
 
+func TestGettingSmartlogicChangesOneRequestAtATime(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+
+	testCases := []struct {
+		name     string
+		reqCount int
+		duration time.Duration
+	}{
+		{
+			name:     "100 notify requests",
+			reqCount: 100,
+			duration: 500 * time.Millisecond,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			kc := &mockKafkaClient{}
+			sl := &mockSmartlogicClient{
+				concepts: map[string]string{
+					"uuid1": "concept1",
+					"uuid2": "concept2",
+				},
+				getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+					return []string{"uuid2"}, nil
+				},
+			}
+
+			service := NewNotifierService(kc, sl)
+
+			tickerInterval := test.duration / 5
+			tk := &ticker{ticker: time.NewTicker(tickerInterval)}
+
+			handler := NewNotifierHandler(service, WithTicker(tk))
+
+			m := mux.NewRouter()
+			handler.RegisterEndpoints(m)
+
+			for i := 0; i < test.reqCount; i++ {
+				go func() {
+					r, _ := http.NewRequest("GET", "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=2017-05-31T13:00:00.000Z", nil)
+					start := time.Now()
+					recorder := httptest.NewRecorder()
+					m.ServeHTTP(recorder, r)
+					end := time.Now()
+
+					assert.WithinDuration(t, start, end, tickerInterval)
+				}()
+			}
+
+			time.Sleep(test.duration)
+
+			assert.Equal(t, 1, sl.getChangedConceptListCallCount())
+		})
+	}
+}
+
 func TestHealthServiceChecks(t *testing.T) {
 	log.SetOutput(ioutil.Discard)
 
