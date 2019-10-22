@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// maxTimeValue represents the maximum useful time value (for comparisons like finding the minimum value in a range of times)
 var maxTimeValue = time.Unix(1<<63-62135596801, 999999999)
 
 type Handler struct {
