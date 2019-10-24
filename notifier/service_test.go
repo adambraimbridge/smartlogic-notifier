@@ -17,10 +17,16 @@ func TestNewNotifierService(t *testing.T) {
 
 func TestService_GetConcept(t *testing.T) {
 	kc := &mockKafkaClient{}
-	sl := NewMockSmartlogicClient(map[string]string{
-		"uuid1": "concept1",
-		"uuid2": "concept2",
-	}, []string{})
+	sl := &mockSmartlogicClient{
+		concepts: map[string]string{
+			"uuid1": "concept1",
+			"uuid2": "concept2",
+		},
+		getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+			return []string{}, nil
+		},
+	}
+
 	service := NewNotifierService(kc, sl)
 
 	concept, err := service.GetConcept("uuid2")
@@ -30,10 +36,16 @@ func TestService_GetConcept(t *testing.T) {
 
 func TestService_Notify(t *testing.T) {
 	kc := &mockKafkaClient{}
-	sl := NewMockSmartlogicClient(map[string]string{
-		"uuid1": "concept1",
-		"uuid2": "concept2",
-	}, []string{"uuid2"})
+	sl := &mockSmartlogicClient{
+		concepts: map[string]string{
+			"uuid1": "concept1",
+			"uuid2": "concept2",
+		},
+		getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+			return []string{"uuid2"}, nil
+		},
+	}
+
 	service := NewNotifierService(kc, sl)
 
 	err := service.Notify(time.Now(), "transactionID")
@@ -44,10 +56,16 @@ func TestService_Notify(t *testing.T) {
 
 func TestService_ForceNotify(t *testing.T) {
 	kc := &mockKafkaClient{}
-	sl := NewMockSmartlogicClient(map[string]string{
-		"uuid1": "concept1",
-		"uuid2": "concept2",
-	}, []string{})
+	sl := &mockSmartlogicClient{
+		concepts: map[string]string{
+			"uuid1": "concept1",
+			"uuid2": "concept2",
+		},
+		getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+			return []string{}, nil
+		},
+	}
+
 	service := NewNotifierService(kc, sl)
 
 	err := service.ForceNotify([]string{"uuid1"}, "transactionID")

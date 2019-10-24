@@ -5,11 +5,9 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/url"
-	"testing"
-
-	"time"
-
 	"sort"
+	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )

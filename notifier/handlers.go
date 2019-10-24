@@ -7,19 +7,46 @@ import (
 
 	"time"
 
-	"github.com/Financial-Times/transactionid-utils-go"
+	transactionidutils "github.com/Financial-Times/transactionid-utils-go"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
+// maxTimeValue represents the maximum useful time value (for comparisons like finding the minimum value in a range of times)
+var maxTimeValue = time.Unix(1<<63-62135596801, 999999999)
+
 type Handler struct {
-	notifier Servicer
+	notifier  Servicer
+	ticker    Ticker
+	requestCh chan notificationRequest
 }
 
-func NewNotifierHandler(notifier Servicer) *Handler {
-	return &Handler{
-		notifier: notifier,
+func NewNotifierHandler(notifier Servicer, opts ...func(*Handler)) *Handler {
+	h := &Handler{
+		notifier:  notifier,
+		ticker:    &ticker{ticker: time.NewTicker(5 * time.Second)},
+		requestCh: make(chan notificationRequest, 1),
+	}
+
+	for _, opt := range opts {
+		opt(h)
+	}
+
+	go h.processNotifyRequests()
+
+	return h
+}
+
+type Ticker interface {
+	Tick()
+	Stop()
+}
+
+func WithTicker(t Ticker) func(*Handler) {
+	return func(h *Handler) {
+		h.ticker.Stop()
+		h.ticker = t
 	}
 }
 
@@ -52,13 +79,15 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		writeResponseMessage(resp, http.StatusBadRequest, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
 		return
 	}
-	err = h.notifier.Notify(lastChange, req.Header.Get(transactionidutils.TransactionIDHeader))
-	if err != nil {
-		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error completing the notify", "error": "`+err.Error()+`"}`)
-		return
-	}
 
-	writeJSONResponseMessage(resp, http.StatusOK, "Messages successfully sent to Kafka")
+	go func() {
+		h.requestCh <- notificationRequest{
+			notifySince:   lastChange,
+			transactionID: req.Header.Get(transactionidutils.TransactionIDHeader),
+		}
+	}()
+
+	writeJSONResponseMessage(resp, http.StatusOK, "Concepts successfully ingested")
 }
 
 func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request) {
@@ -118,6 +147,49 @@ func (h *Handler) RegisterEndpoints(router *mux.Router) {
 	router.Handle("/notify", notifyHandler)
 	router.Handle("/force-notify", forceNotifyHandler)
 	router.Handle("/concept/{uuid}", getConceptHandler)
+}
+
+type notificationRequest struct {
+	notifySince   time.Time
+	transactionID string
+}
+
+type ticker struct {
+	ticker *time.Ticker
+}
+
+func (t *ticker) Tick() {
+	<-t.ticker.C
+}
+
+func (t *ticker) Stop() {
+	t.ticker.Stop()
+}
+
+func (h *Handler) processNotifyRequests() {
+	for {
+		h.ticker.Tick()
+
+		if len(h.requestCh) == 0 {
+			continue
+		}
+
+		n := notificationRequest{notifySince: maxTimeValue}
+		for req := range h.requestCh {
+			if n.notifySince.After(req.notifySince) {
+				n = req
+			}
+
+			if len(h.requestCh) == 0 {
+				break
+			}
+		}
+
+		err := h.notifier.Notify(n.notifySince, n.transactionID)
+		if err != nil {
+			return
+		}
+	}
 }
 
 func writeResponseMessage(w http.ResponseWriter, statusCode int, contentType string, message string) {
