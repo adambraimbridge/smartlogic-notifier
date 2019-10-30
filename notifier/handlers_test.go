@@ -280,15 +280,34 @@ func TestProcessingNotifyRequestsDoesNotBlock(t *testing.T) {
 		name              string
 		notificationTimes []string
 		duration          time.Duration
+		slClient          *mockSmartlogicClient
 		expectedTicks     int
 	}{
 		{
-			name:          "no requests",
+			name: "no requests",
+			slClient: &mockSmartlogicClient{
+				concepts: map[string]string{
+					"uuid1": "concept1",
+					"uuid2": "concept2",
+				},
+				getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+					return []string{"uuid2"}, nil
+				},
+			},
 			duration:      100 * time.Millisecond,
 			expectedTicks: 10,
 		},
 		{
 			name: "single request",
+			slClient: &mockSmartlogicClient{
+				concepts: map[string]string{
+					"uuid1": "concept1",
+					"uuid2": "concept2",
+				},
+				getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+					return []string{"uuid2"}, nil
+				},
+			},
 			notificationTimes: []string{
 				"13:00:04.000Z",
 			},
@@ -297,6 +316,15 @@ func TestProcessingNotifyRequestsDoesNotBlock(t *testing.T) {
 		},
 		{
 			name: "10 requests",
+			slClient: &mockSmartlogicClient{
+				concepts: map[string]string{
+					"uuid1": "concept1",
+					"uuid2": "concept2",
+				},
+				getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+					return []string{"uuid2"}, nil
+				},
+			},
 			notificationTimes: []string{
 				"13:00:00.000Z",
 				"13:00:01.000Z",
@@ -312,22 +340,30 @@ func TestProcessingNotifyRequestsDoesNotBlock(t *testing.T) {
 			duration:      1000 * time.Millisecond,
 			expectedTicks: 10,
 		},
+		{
+			name: "5 requests with errors on get changed concepts list",
+			slClient: &mockSmartlogicClient{
+				concepts: nil,
+				getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+					return nil, errors.New("could not get changed concepts list")
+				},
+			},
+			notificationTimes: []string{
+				"13:00:03.000Z",
+				"13:00:04.000Z",
+				"13:00:05.000Z",
+				"13:00:06.000Z",
+				"13:00:07.000Z",
+			},
+			duration:      1000 * time.Millisecond,
+			expectedTicks: 10,
+		},
 	}
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			kc := &mockKafkaClient{}
-			sl := &mockSmartlogicClient{
-				concepts: map[string]string{
-					"uuid1": "concept1",
-					"uuid2": "concept2",
-				},
-				getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
-					return []string{"uuid2"}, nil
-				},
-			}
-
-			service := NewNotifierService(kc, sl)
+			service := NewNotifierService(kc, test.slClient)
 
 			tickerInterval := test.duration / 10
 			tk := &mockTicker{ticker: time.NewTicker(tickerInterval)}
