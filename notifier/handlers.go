@@ -187,7 +187,7 @@ func (h *Handler) processNotifyRequests() {
 
 		err := h.notifier.Notify(n.notifySince, n.transactionID)
 		if err != nil {
-			return
+			continue
 		}
 	}
 }
