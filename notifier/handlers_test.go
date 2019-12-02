@@ -3,6 +3,7 @@ package notifier
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	http "net/http"
 	"net/http/httptest"
@@ -18,6 +19,8 @@ import (
 func TestHandlers(t *testing.T) {
 	log.SetOutput(ioutil.Discard)
 
+	today := time.Now().Format(TimeFormat)
+	past := time.Date(1900, 1, 1, 0, 0, 0, 0, time.Local).Format(TimeFormat)
 	testCases := []struct {
 		name        string
 		method      string
@@ -30,7 +33,7 @@ func TestHandlers(t *testing.T) {
 		{
 			name:       "Notify - Success",
 			method:     "GET",
-			url:        "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=2017-05-31T13:00:00.000Z",
+			url:        fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s", today),
 			resultBody: "{\"message\": \"Concepts successfully ingested\"}",
 			resultCode: 200,
 			mockService: &mockService{
@@ -60,13 +63,21 @@ func TestHandlers(t *testing.T) {
 			method:      "GET",
 			url:         "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=notadate",
 			resultCode:  400,
-			resultBody:  "{\"message\": \"Date is not in the format 2006-01-02T15:04:05.000Z\"}",
+			resultBody:  "{\"message\": \"Date is not in the format 2006-01-02T15:04:05Z\"}",
+			mockService: &mockService{},
+		},
+		{
+			name:        "Notify - Bad lastChangeDate parameter",
+			method:      "GET",
+			url:         fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s", past),
+			resultCode:  400,
+			resultBody:  fmt.Sprintf("{\"message\": \"Last change date should be time point in the last %.0f hours\"}", LastChangeLimit.Hours()),
 			mockService: &mockService{},
 		},
 		{
 			name:       "Notify - Error",
 			method:     "GET",
-			url:        "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=2017-05-31T13:00:00.000Z",
+			url:        fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s", today),
 			resultBody: "{\"message\": \"Concepts successfully ingested\"}",
 			resultCode: 200,
 			mockService: &mockService{
@@ -224,6 +235,7 @@ func TestConcurrentNotify(t *testing.T) {
 		},
 	}
 
+	today := time.Now().Format("2006-01-02T")
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			kc := &mockKafkaClient{}
@@ -251,8 +263,8 @@ func TestConcurrentNotify(t *testing.T) {
 			handler.RegisterEndpoints(m)
 
 			var reqs []*http.Request
-			for _, t := range test.notificationTimes {
-				url := "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=2017-05-31T" + t
+			for _, tPoint := range test.notificationTimes {
+				url := fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s%s", today, tPoint)
 				req, _ := http.NewRequest("GET", url, nil)
 				reqs = append(reqs, req)
 			}
@@ -360,6 +372,7 @@ func TestProcessingNotifyRequestsDoesNotBlock(t *testing.T) {
 		},
 	}
 
+	today := time.Now().Format("2017-05-31T")
 	for _, test := range testCases {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
@@ -376,8 +389,8 @@ func TestProcessingNotifyRequestsDoesNotBlock(t *testing.T) {
 			handler.RegisterEndpoints(m)
 
 			var reqs []*http.Request
-			for _, t := range test.notificationTimes {
-				url := "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=2017-05-31T" + t
+			for _, tPoint := range test.notificationTimes {
+				url := fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s%s", today, tPoint)
 				req, _ := http.NewRequest("GET", url, nil)
 				reqs = append(reqs, req)
 			}
@@ -414,7 +427,8 @@ func TestGettingSmartlogicChangesOneRequestAtATime(t *testing.T) {
 			duration: 500 * time.Millisecond,
 		},
 	}
-
+	today := time.Now().Format(TimeFormat)
+	requestURI := fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s", today)
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			kc := &mockKafkaClient{}
@@ -440,7 +454,7 @@ func TestGettingSmartlogicChangesOneRequestAtATime(t *testing.T) {
 
 			for i := 0; i < test.reqCount; i++ {
 				go func() {
-					r, _ := http.NewRequest("GET", "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=2017-05-31T13:00:00.000Z", nil)
+					r, _ := http.NewRequest("GET", requestURI, nil)
 					start := time.Now()
 					recorder := httptest.NewRecorder()
 					m.ServeHTTP(recorder, r)
