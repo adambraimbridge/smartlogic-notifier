@@ -2,9 +2,9 @@ package notifier
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
-
 	"time"
 
 	transactionidutils "github.com/Financial-Times/transactionid-utils-go"
@@ -13,8 +13,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// TimeFormat is the format used to read time values from request parameters
+const TimeFormat = "2006-01-02T15:04:05Z"
+
 // maxTimeValue represents the maximum useful time value (for comparisons like finding the minimum value in a range of times)
 var maxTimeValue = time.Unix(1<<63-62135596801, 999999999)
+
+// lastChangeLimit represents the upper limit to how far in the past we can reingest smartlogic updates
+var LastChangeLimit = time.Hour * 168
 
 type Handler struct {
 	notifier  Servicer
@@ -71,12 +77,20 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	lastChange, err := time.Parse("2006-01-02T15:04:05Z", lastChangeDate)
+	lastChange, err := time.Parse(TimeFormat, lastChangeDate)
+	if err != nil {
+		writeResponseMessage(resp,
+			http.StatusBadRequest,
+			"application/json",
+			fmt.Sprintf("{\"message\": \"Date is not in the format %s\"}", TimeFormat))
+		return
+	}
 	log.WithField("time", lastChange).Debug("Parsing notification time")
 	lastChange = lastChange.Add(-10 * time.Millisecond)
 	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
-	if err != nil {
-		writeResponseMessage(resp, http.StatusBadRequest, "application/json", `{"message": "Date is not in the format 2006-01-02T15:04:05.000Z"}`)
+
+	if time.Since(lastChange) > LastChangeLimit {
+		writeJSONResponseMessage(resp, http.StatusBadRequest, fmt.Sprintf("Last change date should be time point in the last %s", LastChangeLimit.String()))
 		return
 	}
 
