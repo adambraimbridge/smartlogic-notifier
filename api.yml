@@ -37,7 +37,10 @@ paths:
         - name: lastChangeDate
           in: query
           required: true
-          description: Timestamp of the change which generated this notification. The timestamp is formatted according to ISO 8601
+          description: |
+            Timestamp of the change which generated this notification.
+            It has an upper limit and requests with timestamps prior to that limit are discarded with status 400 BadRequest.
+            It should be formatted according to ISO 8601.
           type: string
           format: date-time
       responses:
