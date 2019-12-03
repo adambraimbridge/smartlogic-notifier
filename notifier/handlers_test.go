@@ -146,6 +146,66 @@ func TestHandlers(t *testing.T) {
 			},
 		},
 		{
+			name:       "Get Concepts - Success",
+			method:     "GET",
+			url:        fmt.Sprintf("/concepts?lastChangeDate=%s", today),
+			resultCode: 200,
+			resultBody: `["1","2","3"]`,
+			mockService: &mockService{
+				getConcepts: func(t time.Time) ([]string, error) {
+					return []string{"1", "2", "3"}, nil
+				},
+			},
+		},
+		{
+			name:       "Get Concepts - Invalid Time",
+			method:     "GET",
+			url:        fmt.Sprintf("/concepts?lastChangeDate=%s", past),
+			resultCode: 400,
+			resultBody: fmt.Sprintf("{\"message\": \"Last change date should be time point in the last %.0f hours\"}", LastChangeLimit.Hours()),
+			mockService: &mockService{
+				getConcepts: func(t time.Time) ([]string, error) {
+					return []string{"1", "2", "3"}, nil
+				},
+			},
+		},
+		{
+			name:       "Get Concepts - Bad Time format",
+			method:     "GET",
+			url:        "/concepts?lastChangeDate=nodata",
+			resultCode: 400,
+			resultBody: "{\"message\": \"Date is not in the format 2006-01-02T15:04:05Z\"}",
+			mockService: &mockService{
+				getConcepts: func(t time.Time) ([]string, error) {
+					return []string{"1", "2", "3"}, nil
+				},
+			},
+		},
+		{
+			name:       "Get Concepts - No Time",
+			method:     "GET",
+			url:        "/concepts",
+			resultCode: 400,
+			resultBody: "{\"message\": \"Query parameter lastChangeDate was not set.\"}",
+			mockService: &mockService{
+				getConcepts: func(t time.Time) ([]string, error) {
+					return []string{"1", "2", "3"}, nil
+				},
+			},
+		},
+		{
+			name:       "Get Concepts - Smartlogic error",
+			method:     "GET",
+			url:        fmt.Sprintf("/concepts?lastChangeDate=%s", today),
+			resultCode: 500,
+			resultBody: "{\"message\": \"There was an error getting the changes\", \"error\": \"smartlogic error\"}",
+			mockService: &mockService{
+				getConcepts: func(t time.Time) ([]string, error) {
+					return nil, errors.New("smartlogic error")
+				},
+			},
+		},
+		{
 			name:        "__health",
 			method:      "GET",
 			url:         "/__health",

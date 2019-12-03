@@ -13,6 +13,7 @@ import (
 
 type Servicer interface {
 	GetConcept(uuid string) ([]byte, error)
+	GetConcepts(lastChange time.Time) ([]string, error)
 	Notify(lastChange time.Time, transactionID string) error
 	ForceNotify(UUIDs []string, transactionID string) error
 	CheckKafkaConnectivity() error
@@ -32,6 +33,10 @@ func NewNotifierService(kafka kafka.Producer, smartlogic smartlogic.Clienter) Se
 
 func (s *Service) GetConcept(uuid string) ([]byte, error) {
 	return s.smartlogic.GetConcept(uuid)
+}
+
+func (s *Service) GetConcepts(lastChange time.Time) (uuids []string, err error) {
+	return s.smartlogic.GetChangedConceptList(lastChange)
 }
 
 func (s *Service) Notify(lastChange time.Time, transactionID string) error {

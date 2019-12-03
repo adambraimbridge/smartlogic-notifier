@@ -73,6 +73,7 @@ func (kf *mockKafkaClient) getSentCount() int {
 
 type mockService struct {
 	getConcept             func(string) ([]byte, error)
+	getConcepts            func(time.Time) ([]string, error)
 	notify                 func(time.Time, string) error
 	forceNotify            func([]string, string) error
 	checkKafkaConnectivity func() error
@@ -81,6 +82,13 @@ type mockService struct {
 func (s *mockService) GetConcept(uuid string) ([]byte, error) {
 	if s.getConcept != nil {
 		return s.getConcept(uuid)
+	}
+	return nil, errors.New("not implemented")
+}
+
+func (s *mockService) GetConcepts(lastChange time.Time) ([]string, error) {
+	if s.getConcepts != nil {
+		return s.getConcepts(lastChange)
 	}
 	return nil, errors.New("not implemented")
 }

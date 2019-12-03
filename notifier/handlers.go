@@ -104,6 +104,44 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 	writeJSONResponseMessage(resp, http.StatusOK, "Concepts successfully ingested")
 }
 
+func (h *Handler) HandleGetConcepts(resp http.ResponseWriter, req *http.Request) {
+	vars := req.URL.Query()
+	lastChangeDate := vars.Get("lastChangeDate")
+	if lastChangeDate == "" {
+		writeJSONResponseMessage(resp, http.StatusBadRequest, `Query parameter lastChangeDate was not set.`)
+		return
+	}
+
+	lastChange, err := time.Parse(TimeFormat, lastChangeDate)
+	if err != nil {
+		writeResponseMessage(resp,
+			http.StatusBadRequest,
+			"application/json",
+			fmt.Sprintf("{\"message\": \"Date is not in the format %s\"}", TimeFormat))
+		return
+	}
+	log.WithField("time", lastChange).Debug("Parsing notification time")
+	lastChange = lastChange.Add(-10 * time.Millisecond)
+	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
+
+	if time.Since(lastChange) > LastChangeLimit {
+		writeJSONResponseMessage(resp, http.StatusBadRequest, fmt.Sprintf("Last change date should be time point in the last %s", LastChangeLimit.String()))
+		return
+	}
+
+	uuids, err := h.notifier.GetConcepts(lastChange)
+	if err != nil {
+		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error getting the changes", "error": "`+err.Error()+`"}`)
+		return
+	}
+	uuidsJson, err := json.Marshal(uuids)
+	if err != nil {
+		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error encoding the response", "error": "`+err.Error()+`"}`)
+	}
+
+	writeResponseMessage(resp, http.StatusOK, "application/json", string(uuidsJson))
+}
+
 func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request) {
 	type payload struct {
 		UUIDs []string `json:"uuids,omitempty"`
@@ -157,10 +195,14 @@ func (h *Handler) RegisterEndpoints(router *mux.Router) {
 	getConceptHandler := handlers.MethodHandler{
 		"GET": http.HandlerFunc(h.HandleGetConcept),
 	}
+	getConceptsHandler := handlers.MethodHandler{
+		"GET": http.HandlerFunc(h.HandleGetConcepts),
+	}
 
 	router.Handle("/notify", notifyHandler)
 	router.Handle("/force-notify", forceNotifyHandler)
 	router.Handle("/concept/{uuid}", getConceptHandler)
+	router.Handle("/concepts", getConceptsHandler)
 }
 
 type notificationRequest struct {
