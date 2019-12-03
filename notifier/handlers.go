@@ -73,27 +73,15 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	if len(notSet) > 0 {
-		writeJSONResponseMessage(resp, http.StatusBadRequest, `Query parameters were not set: `+strings.Join(notSet, ", "))
+		writeJSONResponseMessage(resp, http.StatusBadRequest, responseData{Msg: `Query parameters were not set: ` + strings.Join(notSet, ", ")})
 		return
 	}
 
-	lastChange, err := time.Parse(TimeFormat, lastChangeDate)
+	lastChange, err := validateLastChangeDate(lastChangeDate)
 	if err != nil {
-		writeResponseMessage(resp,
-			http.StatusBadRequest,
-			"application/json",
-			fmt.Sprintf("{\"message\": \"Date is not in the format %s\"}", TimeFormat))
+		writeJSONResponseMessage(resp, http.StatusBadRequest, responseData{Msg: err.Error()})
 		return
 	}
-	log.WithField("time", lastChange).Debug("Parsing notification time")
-	lastChange = lastChange.Add(-10 * time.Millisecond)
-	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
-
-	if time.Since(lastChange) > LastChangeLimit {
-		writeJSONResponseMessage(resp, http.StatusBadRequest, fmt.Sprintf("Last change date should be time point in the last %.0f hours", LastChangeLimit.Hours()))
-		return
-	}
-
 	go func() {
 		h.requestCh <- notificationRequest{
 			notifySince:   lastChange,
@@ -101,45 +89,35 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
-	writeJSONResponseMessage(resp, http.StatusOK, "Concepts successfully ingested")
+	writeJSONResponseMessage(resp, http.StatusOK, responseData{Msg: "Concepts successfully ingested"})
 }
 
 func (h *Handler) HandleGetConcepts(resp http.ResponseWriter, req *http.Request) {
 	vars := req.URL.Query()
 	lastChangeDate := vars.Get("lastChangeDate")
 	if lastChangeDate == "" {
-		writeJSONResponseMessage(resp, http.StatusBadRequest, `Query parameter lastChangeDate was not set.`)
+		writeJSONResponseMessage(resp, http.StatusBadRequest, responseData{Msg: "Query parameter lastChangeDate was not set."})
 		return
 	}
 
-	lastChange, err := time.Parse(TimeFormat, lastChangeDate)
+	lastChange, err := validateLastChangeDate(lastChangeDate)
 	if err != nil {
-		writeResponseMessage(resp,
-			http.StatusBadRequest,
-			"application/json",
-			fmt.Sprintf("{\"message\": \"Date is not in the format %s\"}", TimeFormat))
-		return
-	}
-	log.WithField("time", lastChange).Debug("Parsing notification time")
-	lastChange = lastChange.Add(-10 * time.Millisecond)
-	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
-
-	if time.Since(lastChange) > LastChangeLimit {
-		writeJSONResponseMessage(resp, http.StatusBadRequest, fmt.Sprintf("Last change date should be time point in the last %s", LastChangeLimit.String()))
+		writeJSONResponseMessage(resp, http.StatusBadRequest, responseData{Msg: err.Error()})
 		return
 	}
 
 	uuids, err := h.notifier.GetChangedConceptList(lastChange)
 	if err != nil {
-		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error getting the changes", "error": "`+err.Error()+`"}`)
+		writeJSONResponseMessage(resp, http.StatusInternalServerError, responseData{Msg: "There was an error getting the changes", Err: err})
 		return
 	}
 	uuidsJson, err := json.Marshal(uuids)
 	if err != nil {
-		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error encoding the response", "error": "`+err.Error()+`"}`)
+		writeJSONResponseMessage(resp, http.StatusInternalServerError, responseData{Msg: "There was an error encoding the response", Err: err})
+		return
 	}
 
-	writeResponseMessage(resp, http.StatusOK, "application/json", string(uuidsJson))
+	writeResponseData(resp, http.StatusOK, "application/json", string(uuidsJson))
 }
 
 func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request) {
@@ -150,21 +128,21 @@ func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request)
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&pl)
 	if err != nil {
-		writeResponseMessage(resp, http.StatusBadRequest, "application/json", `{"message": "There was an error decoding the payload", "error": "`+err.Error()+`"}`)
+		writeJSONResponseMessage(resp, http.StatusBadRequest, responseData{Msg: "There was an error decoding the payload", Err: err})
 		return
 	}
 
 	if pl.UUIDs == nil {
-		writeJSONResponseMessage(resp, http.StatusBadRequest, "No 'uuids' parameter provided")
+		writeJSONResponseMessage(resp, http.StatusBadRequest, responseData{Msg: "No 'uuids' parameter provided"})
 		return
 	}
 
 	err = h.notifier.ForceNotify(pl.UUIDs, req.Header.Get(transactionidutils.TransactionIDHeader))
 	if err != nil {
-		writeJSONResponseMessage(resp, http.StatusInternalServerError, "There was an error completing the force notify")
+		writeJSONResponseMessage(resp, http.StatusInternalServerError, responseData{Msg: "There was an error completing the force notify"})
 		return
 	}
-	writeResponseMessage(resp, http.StatusOK, "text/plain", "Concept notification completed")
+	writeResponseData(resp, http.StatusOK, "text/plain", "Concept notification completed")
 }
 
 func (h *Handler) HandleGetConcept(resp http.ResponseWriter, req *http.Request) {
@@ -172,17 +150,16 @@ func (h *Handler) HandleGetConcept(resp http.ResponseWriter, req *http.Request) 
 	uuid, ok := vars["uuid"]
 
 	if !ok {
-		writeJSONResponseMessage(resp, http.StatusBadRequest, "UUID was not set.")
+		writeJSONResponseMessage(resp, http.StatusBadRequest, responseData{Msg: "UUID was not set."})
 		return
 	}
 
 	concept, err := h.notifier.GetConcept(uuid)
 	if err != nil {
-		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error retrieving the concept", "error": "`+err.Error()+`"}`)
+		writeJSONResponseMessage(resp, http.StatusInternalServerError, responseData{Msg: "There was an error retrieving the concept", Err: err})
 		return
 	}
-	resp.Header().Set("Content-Type", "application/ld+json")
-	resp.Write(concept)
+	writeResponseData(resp, http.StatusOK, "application/ld+json", string(concept))
 }
 
 func (h *Handler) RegisterEndpoints(router *mux.Router) {
@@ -248,17 +225,39 @@ func (h *Handler) processNotifyRequests() {
 	}
 }
 
-func writeResponseMessage(w http.ResponseWriter, statusCode int, contentType string, message string) {
-	log.WithField("message", message).Debug("Creating response message")
+type responseData struct {
+	Msg string
+	Err error
+}
+
+func writeResponseData(w http.ResponseWriter, statusCode int, contentType string, msg string) {
 	if contentType == "" {
 		contentType = "text/plain"
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(statusCode)
-	w.Write([]byte(message))
+	_, _ = w.Write([]byte(msg))
 }
 
-func writeJSONResponseMessage(w http.ResponseWriter, statusCode int, message string) {
-	msg := `{"message": "` + message + `"}`
-	writeResponseMessage(w, statusCode, "application/json", msg)
+func writeJSONResponseMessage(w http.ResponseWriter, statusCode int, resp responseData) {
+	msg := `{"message": "` + resp.Msg + `"}`
+	if resp.Err != nil {
+		msg = `{"message": "` + resp.Msg + `", "error": "` + resp.Err.Error() + `"}`
+	}
+	writeResponseData(w, statusCode, "application/json", msg)
+}
+
+func validateLastChangeDate(change string) (time.Time, error) {
+	lastChange, err := time.Parse(TimeFormat, change)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("Date is not in the format %s", TimeFormat)
+	}
+	log.WithField("time", lastChange).Debug("Parsing notification time")
+	lastChange = lastChange.Add(-10 * time.Millisecond)
+	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
+
+	if time.Since(lastChange) > LastChangeLimit {
+		return time.Time{}, fmt.Errorf("Last change date should be time point in the last %.0f hours", LastChangeLimit.Hours())
+	}
+	return lastChange, nil
 }
