@@ -77,23 +77,11 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	lastChange, err := time.Parse(TimeFormat, lastChangeDate)
+	lastChange, err := validateLastChangeDate(lastChangeDate)
 	if err != nil {
-		writeResponseMessage(resp,
-			http.StatusBadRequest,
-			"application/json",
-			fmt.Sprintf("{\"message\": \"Date is not in the format %s\"}", TimeFormat))
+		writeJSONResponseMessage(resp, http.StatusBadRequest, err.Error())
 		return
 	}
-	log.WithField("time", lastChange).Debug("Parsing notification time")
-	lastChange = lastChange.Add(-10 * time.Millisecond)
-	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
-
-	if time.Since(lastChange) > LastChangeLimit {
-		writeJSONResponseMessage(resp, http.StatusBadRequest, fmt.Sprintf("Last change date should be time point in the last %.0f hours", LastChangeLimit.Hours()))
-		return
-	}
-
 	go func() {
 		h.requestCh <- notificationRequest{
 			notifySince:   lastChange,
@@ -112,31 +100,21 @@ func (h *Handler) HandleGetConcepts(resp http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	lastChange, err := time.Parse(TimeFormat, lastChangeDate)
+	lastChange, err := validateLastChangeDate(lastChangeDate)
 	if err != nil {
-		writeResponseMessage(resp,
-			http.StatusBadRequest,
-			"application/json",
-			fmt.Sprintf("{\"message\": \"Date is not in the format %s\"}", TimeFormat))
-		return
-	}
-	log.WithField("time", lastChange).Debug("Parsing notification time")
-	lastChange = lastChange.Add(-10 * time.Millisecond)
-	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
-
-	if time.Since(lastChange) > LastChangeLimit {
-		writeJSONResponseMessage(resp, http.StatusBadRequest, fmt.Sprintf("Last change date should be time point in the last %s", LastChangeLimit.String()))
+		writeJSONResponseMessage(resp, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	uuids, err := h.notifier.GetConcepts(lastChange)
 	if err != nil {
-		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error getting the changes", "error": "`+err.Error()+`"}`)
+		writeJSONResponseErrorMessage(resp, http.StatusInternalServerError, "There was an error getting the changes", err)
 		return
 	}
 	uuidsJson, err := json.Marshal(uuids)
 	if err != nil {
-		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error encoding the response", "error": "`+err.Error()+`"}`)
+		writeJSONResponseErrorMessage(resp, http.StatusInternalServerError, "There was an error encoding the response", err)
+		return
 	}
 
 	writeResponseMessage(resp, http.StatusOK, "application/json", string(uuidsJson))
@@ -150,7 +128,7 @@ func (h *Handler) HandleForceNotify(resp http.ResponseWriter, req *http.Request)
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&pl)
 	if err != nil {
-		writeResponseMessage(resp, http.StatusBadRequest, "application/json", `{"message": "There was an error decoding the payload", "error": "`+err.Error()+`"}`)
+		writeJSONResponseErrorMessage(resp, http.StatusBadRequest, "There was an error decoding the payload", err)
 		return
 	}
 
@@ -178,7 +156,7 @@ func (h *Handler) HandleGetConcept(resp http.ResponseWriter, req *http.Request) 
 
 	concept, err := h.notifier.GetConcept(uuid)
 	if err != nil {
-		writeResponseMessage(resp, http.StatusInternalServerError, "application/json", `{"message": "There was an error retrieving the concept", "error": "`+err.Error()+`"}`)
+		writeJSONResponseErrorMessage(resp, http.StatusInternalServerError, "There was an error retrieving the concept", err)
 		return
 	}
 	resp.Header().Set("Content-Type", "application/ld+json")
@@ -261,4 +239,24 @@ func writeResponseMessage(w http.ResponseWriter, statusCode int, contentType str
 func writeJSONResponseMessage(w http.ResponseWriter, statusCode int, message string) {
 	msg := `{"message": "` + message + `"}`
 	writeResponseMessage(w, statusCode, "application/json", msg)
+}
+
+func writeJSONResponseErrorMessage(w http.ResponseWriter, statusCode int, message string, err error) {
+	msg := `{"message": "` + message + `", "error": "` + err.Error() + `"}`
+	writeResponseMessage(w, statusCode, "application/json", msg)
+}
+
+func validateLastChangeDate(change string) (time.Time, error) {
+	lastChange, err := time.Parse(TimeFormat, change)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("Date is not in the format %s", TimeFormat)
+	}
+	log.WithField("time", lastChange).Debug("Parsing notification time")
+	lastChange = lastChange.Add(-10 * time.Millisecond)
+	log.WithField("time", lastChange).Debug("Subtracting notification time wobble")
+
+	if time.Since(lastChange) > LastChangeLimit {
+		return time.Time{}, fmt.Errorf("Last change date should be time point in the last %.0f hours", LastChangeLimit.Hours())
+	}
+	return lastChange, nil
 }
