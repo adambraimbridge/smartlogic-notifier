@@ -151,6 +151,34 @@ paths:
           examples:
             application/json:
               message: Unable to connect to Smartlogic
+  /concepts:
+    get:
+      summary: Get a list of updated concepts for a period of time
+      tags:
+        - Functional
+      produces:
+        - application/json
+      parameters:
+        - name: lastChangeDate
+          in: query
+          required: true
+          description: |
+            Timestamp of the change which generated this notification.
+            It has an upper limit and requests with timestamps prior to that limit are discarded with status 400 BadRequest.
+            It should be formatted according to ISO 8601.
+          type: string
+          format: date-time
+      responses:
+        200:
+          description: List of UUIDs of updated concepts from Smartlogic
+          examples:
+            application/json:
+              - 82ccd87b-2a6a-422e-a694-6ed15a25854d
+              - c4ea7c11-9387-4a0e-aa91-a3c077eaaeba
+        400:
+          description: The lastChangeDate query parameter is not passed or is not in the correct format.
+        500:
+          description: There was a problem obtaining the full concept list from Smartlogic.
 
   /__health:
     get:
