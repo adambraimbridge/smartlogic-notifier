@@ -11,7 +11,7 @@ require (
 	github.com/Financial-Times/transactionid-utils-go v0.2.0
 	github.com/Shopify/sarama v1.23.1 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
-	github.com/gorilla/handlers v1.2.1
+	github.com/gorilla/handlers v1.3.0
 	github.com/gorilla/mux v1.4.1-0.20170524010104-043ee6597c29
 	github.com/hashicorp/go-version v0.0.0-20170202080759-03c5bf6be031 // indirect
 	github.com/jawher/mow.cli v0.0.0-20170430135212-8327d12beb75
