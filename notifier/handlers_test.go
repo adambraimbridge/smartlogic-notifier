@@ -472,7 +472,7 @@ func TestGettingSmartlogicChangesOneRequestAtATime(t *testing.T) {
 		{
 			name:     "100 notify requests",
 			reqCount: 100,
-			duration: 500 * time.Millisecond,
+			duration: 2500 * time.Millisecond,
 		},
 	}
 	today := time.Now().Format(TimeFormat)

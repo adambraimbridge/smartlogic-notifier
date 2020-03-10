@@ -58,7 +58,6 @@ func TestNewSmartlogicClient_BadURL(t *testing.T) {
 		}, "http:// base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
 	assert.Error(t, err)
-	assert.EqualValues(t, "parse http:// base/url: invalid character \" \" in host name", err.Error())
 }
 
 func TestNewSmartlogicClient_NoToken(t *testing.T) {
@@ -163,7 +162,6 @@ func TestClient_MakeRequest_RequestError(t *testing.T) {
 
 	_, err = sl.makeRequest("GET", "http:// a/url")
 	assert.Error(t, err)
-	assert.EqualValues(t, "parse http:// a/url: invalid character \" \" in host name", err.Error())
 }
 
 func TestClient_GetConcept_URLError(t *testing.T) {
