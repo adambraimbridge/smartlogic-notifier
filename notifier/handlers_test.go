@@ -17,6 +17,7 @@ import (
 )
 
 func TestHandlers(t *testing.T) {
+	t.Parallel()
 	log.SetOutput(ioutil.Discard)
 
 	today := time.Now().Format(TimeFormat)
@@ -247,6 +248,7 @@ func TestHandlers(t *testing.T) {
 }
 
 func TestConcurrentNotify(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name                           string
 		notificationTimes              []string
@@ -336,6 +338,7 @@ func TestConcurrentNotify(t *testing.T) {
 }
 
 func TestProcessingNotifyRequestsDoesNotBlock(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name              string
 		notificationTimes []string
@@ -462,6 +465,7 @@ func TestProcessingNotifyRequestsDoesNotBlock(t *testing.T) {
 }
 
 func TestGettingSmartlogicChangesOneRequestAtATime(t *testing.T) {
+	t.Parallel()
 	log.SetOutput(ioutil.Discard)
 
 	testCases := []struct {
@@ -520,6 +524,7 @@ func TestGettingSmartlogicChangesOneRequestAtATime(t *testing.T) {
 }
 
 func TestHealthServiceChecks(t *testing.T) {
+	t.Parallel()
 	log.SetOutput(ioutil.Discard)
 
 	tests := []struct {
@@ -622,6 +627,7 @@ func TestHealthServiceChecks(t *testing.T) {
 }
 
 func TestHealthServiceCache(t *testing.T) {
+	t.Parallel()
 	log.SetOutput(ioutil.Discard)
 
 	tests := []struct {
