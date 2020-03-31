@@ -18,6 +18,7 @@ import (
 )
 
 const appDescription = "Entrypoint for concept publish notifications from the Smartlogic Semaphore system"
+const defaultSmartlogicTimeout = 30 * time.Second
 
 func main() {
 
@@ -69,6 +70,13 @@ func main() {
 		EnvVar: "SMARTLOGIC_API_KEY",
 	})
 
+	smartlogicTimeout := app.String(cli.StringOpt{
+		Name:   "smartlogicTimeout",
+		Desc:   "Number of seconds to wait for smartlogic to respond to our requests",
+		EnvVar: "SMARTLOGIC_TIMEOUT",
+		Value:  "30s",
+	})
+
 	port := app.String(cli.StringOpt{
 		Name:   "port",
 		Value:  "8080",
@@ -112,6 +120,12 @@ func main() {
 		smartlogicHealthCacheDuration = time.Duration(time.Minute)
 	}
 
+	smartlogicTimeoutDuration, err := time.ParseDuration(*smartlogicTimeout)
+	if err != nil {
+		log.Warnf("Smartlogic timeout duration %s could not be parsed", *smartlogicTimeout)
+		smartlogicTimeoutDuration = defaultSmartlogicTimeout
+	}
+
 	log.Infof("Caching successful health for %s", smartlogicHealthCacheDuration)
 
 	app.Action = func() {
@@ -123,7 +137,8 @@ func main() {
 		if err != nil {
 			log.WithField("kafkaAddresses", *kafkaAddresses).WithField("kafkaTopic", *kafkaTopic).Fatalf("Error creating the Kafka producer.")
 		}
-		httpClient := getResilientClient()
+
+		httpClient := getResilientClient(smartlogicTimeoutDuration)
 		sl, err := smartlogic.NewSmartlogicClient(httpClient, *smartlogicBaseURL, *smartlogicModel, *smartlogicAPIKey, *conceptUriPrefix)
 		if err != nil {
 			log.Error("Error generating access token when connecting to Smartlogic.  If this continues to fail, please check the configuration.")
@@ -159,13 +174,13 @@ func waitForSignal() {
 	<-ch
 }
 
-func getResilientClient() *pester.Client {
+func getResilientClient(timeout time.Duration) *pester.Client {
 	c := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 10,
 			MaxIdleConns:        10,
 		},
-		Timeout: 10 * time.Second,
+		Timeout: timeout,
 	}
 	client := pester.NewExtendedClient(c)
 	client.Backoff = pester.ExponentialBackoff
