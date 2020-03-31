@@ -69,6 +69,13 @@ func main() {
 		EnvVar: "SMARTLOGIC_API_KEY",
 	})
 
+	smartlogicTimeout := app.Int(cli.IntOpt{
+		Name:   "smartlogicTimeout",
+		Desc:   "Number of seconds to wait for smartlogic to respond to our requests",
+		EnvVar: "SMARTLOGIC_TIMEOUT",
+		Value:  30,
+	})
+
 	port := app.String(cli.StringOpt{
 		Name:   "port",
 		Value:  "8080",
@@ -123,7 +130,8 @@ func main() {
 		if err != nil {
 			log.WithField("kafkaAddresses", *kafkaAddresses).WithField("kafkaTopic", *kafkaTopic).Fatalf("Error creating the Kafka producer.")
 		}
-		httpClient := getResilientClient()
+
+		httpClient := getResilientClient((time.Duration)(*smartlogicTimeout) * time.Second)
 		sl, err := smartlogic.NewSmartlogicClient(httpClient, *smartlogicBaseURL, *smartlogicModel, *smartlogicAPIKey, *conceptUriPrefix)
 		if err != nil {
 			log.Error("Error generating access token when connecting to Smartlogic.  If this continues to fail, please check the configuration.")
@@ -159,13 +167,13 @@ func waitForSignal() {
 	<-ch
 }
 
-func getResilientClient() *pester.Client {
+func getResilientClient(timeout time.Duration) *pester.Client {
 	c := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 10,
 			MaxIdleConns:        10,
 		},
-		Timeout: 10 * time.Second,
+		Timeout: timeout,
 	}
 	client := pester.NewExtendedClient(c)
 	client.Backoff = pester.ExponentialBackoff
