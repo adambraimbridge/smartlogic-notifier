@@ -47,6 +47,8 @@ spec:
             secretKeyRef:
               name: global-secrets
               key: smartlogic.api-key
+        - name: SMARTLOGIC_TIMEOUT
+          value: {{ .Values.config.smartlogicTimeout }}
         - name: KAFKA_ADDRESSES
           valueFrom:
             configMapKeyRef:
