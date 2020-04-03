@@ -13,5 +13,5 @@ resources:
     memory: 32Mi
   limits:
     memory: 128Mi
-
-
+config:
+  smartlogicTimeout: "30s"
