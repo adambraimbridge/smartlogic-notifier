@@ -240,3 +240,21 @@ func TestClient_GetChangedConceptList_BadResponseBody(t *testing.T) {
 	assert.IsType(t, &json.SyntaxError{}, err)
 	assert.Empty(t, response)
 }
+
+func TestClient_buildChangesAPIQueryParams(t *testing.T) {
+	changeDate, err := time.Parse(slTimeFormat, "2020-04-27T00:00:00.000Z")
+	assert.NoError(t, err)
+
+	client, err := NewSmartlogicTestClient(&mockHttpClient{}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix")
+	assert.NoError(t, err)
+
+	queryParams := client.buildChangesAPIQueryParams(changeDate)
+	assert.Contains(t, queryParams, "path")
+	assert.Equal(t, queryParams.Get("path"), "tchmodel:modelName/teamwork:Change/rdf:instance")
+
+	assert.Contains(t, queryParams, "properties")
+	assert.Equal(t, queryParams.Get("properties"), "sem:about")
+
+	assert.Contains(t, queryParams, "filters")
+	assert.Equal(t, queryParams.Get("filters"), "subject(sem:committed>\"2020-04-27T00:00:00.000Z\"^^xsd:dateTime)")
+}
