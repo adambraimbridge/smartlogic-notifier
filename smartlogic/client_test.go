@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"sort"
 	"testing"
@@ -12,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func NewSmartlogicTestClient(httpClient httpClient, baseURL string, model string, apiKey string, conceptUriPrefix string) (Client, error) {
+func NewSmartlogicTestClient(httpClient httpClient, baseURL string, model string, apiKey string, conceptURIPrefix string) (Client, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return Client{}, err
@@ -21,7 +22,7 @@ func NewSmartlogicTestClient(httpClient httpClient, baseURL string, model string
 	client := Client{
 		baseURL:          *u,
 		model:            model,
-		conceptUriPrefix: conceptUriPrefix,
+		conceptURIPrefix: conceptURIPrefix,
 		apiKey:           apiKey,
 		httpClient:       httpClient,
 	}
@@ -35,9 +36,9 @@ func TestNewSmartlogicClient_Success(t *testing.T) {
 	tokenResponseString := "{\"access_token\": \"" + tokenResponseValue + "\"}"
 
 	sl, err := NewSmartlogicClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       tokenResponseString,
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        nil,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
@@ -51,9 +52,9 @@ func TestNewSmartlogicClient_BadURL(t *testing.T) {
 	tokenResponseString := "{\"access_token\": \"" + tokenResponseValue + "\"}"
 
 	_, err := NewSmartlogicClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       tokenResponseString,
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        nil,
 		}, "http:// base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
@@ -65,9 +66,9 @@ func TestNewSmartlogicClient_NoToken(t *testing.T) {
 	tokenResponseString := "{\"1\":1}"
 
 	sl, err := NewSmartlogicClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       tokenResponseString,
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        nil,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
@@ -81,9 +82,9 @@ func TestNewSmartlogicClient_BadResponse(t *testing.T) {
 	tokenResponseString := "{\"1\":1}"
 
 	_, err := NewSmartlogicClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       tokenResponseString,
-			statusCode: 404,
+			statusCode: http.StatusNotFound,
 			err:        responseError,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
@@ -96,9 +97,9 @@ func TestNewSmartlogicClient_BadJSON(t *testing.T) {
 	tokenResponseString := "{\"1\":}"
 
 	_, err := NewSmartlogicClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       tokenResponseString,
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        nil,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
@@ -108,43 +109,47 @@ func TestNewSmartlogicClient_BadJSON(t *testing.T) {
 
 func TestClient_MakeRequest_Success(t *testing.T) {
 	sl, err := NewSmartlogicTestClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       "response",
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        nil,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
+	assert.NoError(t, err)
 
 	resp, err := sl.makeRequest("GET", "http://a/url")
 	assert.NoError(t, err)
 
 	defer resp.Body.Close()
 	s, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
 	assert.EqualValues(t, "response", string(s))
 }
 
 func TestClient_MakeRequest_Unauthorized(t *testing.T) {
 	sl, err := NewSmartlogicTestClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       "response",
-			statusCode: 401,
+			statusCode: http.StatusUnauthorized,
 			err:        nil,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
+	assert.NoError(t, err)
 
 	_, err = sl.makeRequest("GET", "http://a/url")
 	assert.Error(t, err)
-	assert.EqualValues(t, errors.New("Failed to get a valid access token"), err)
+	assert.EqualValues(t, errors.New("failed to get a valid access token"), err)
 }
 
 func TestClient_MakeRequest_DoError(t *testing.T) {
 	sl, err := NewSmartlogicTestClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       "response",
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        errors.New("Errorfield"),
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
+	assert.NoError(t, err)
 
 	_, err = sl.makeRequest("GET", "http://a/url")
 	assert.Error(t, err)
@@ -153,12 +158,13 @@ func TestClient_MakeRequest_DoError(t *testing.T) {
 
 func TestClient_MakeRequest_RequestError(t *testing.T) {
 	sl, err := NewSmartlogicTestClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       "response",
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        nil,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
+	assert.NoError(t, err)
 
 	_, err = sl.makeRequest("GET", "http:// a/url")
 	assert.Error(t, err)
@@ -168,9 +174,9 @@ func TestClient_GetConcept_URLError(t *testing.T) {
 	conceptResponse := "response"
 
 	sl, err := NewSmartlogicTestClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       conceptResponse,
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        nil,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
@@ -183,11 +189,12 @@ func TestClient_GetConcept_URLError(t *testing.T) {
 
 func TestClient_GetChangedConceptList_Success(t *testing.T) {
 	conceptResponse, err := ioutil.ReadFile("../resources/get-changed-concepts.json")
+	assert.NoError(t, err)
 
 	sl, err := NewSmartlogicTestClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       string(conceptResponse),
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        nil,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
@@ -205,13 +212,14 @@ func TestClient_GetChangedConceptList_Success(t *testing.T) {
 
 func TestClient_GetChangedConceptList_RequestError(t *testing.T) {
 	conceptResponse, err := ioutil.ReadFile("../resources/get-changed-concepts.json")
+	assert.NoError(t, err)
 
 	requestError := errors.New("anerror")
 
 	sl, err := NewSmartlogicTestClient(
-		&mockHttpClient{
+		&mockHTTPClient{
 			resp:       string(conceptResponse),
-			statusCode: 200,
+			statusCode: http.StatusOK,
 			err:        requestError,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
@@ -227,9 +235,9 @@ func TestClient_GetChangedConceptList_BadResponseBody(t *testing.T) {
 	conceptResponse := "terrible body"
 
 	sl, err := NewSmartlogicTestClient(
-		&mockHttpClient{
-			resp:       string(conceptResponse),
-			statusCode: 200,
+		&mockHTTPClient{
+			resp:       conceptResponse,
+			statusCode: http.StatusOK,
 			err:        nil,
 		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
 	)
@@ -245,7 +253,7 @@ func TestClient_buildChangesAPIQueryParams(t *testing.T) {
 	changeDate, err := time.Parse(slTimeFormat, "2020-04-27T00:00:00.000Z")
 	assert.NoError(t, err)
 
-	client, err := NewSmartlogicTestClient(&mockHttpClient{}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix")
+	client, err := NewSmartlogicTestClient(&mockHTTPClient{}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix")
 	assert.NoError(t, err)
 
 	queryParams := client.buildChangesAPIQueryParams(changeDate)
