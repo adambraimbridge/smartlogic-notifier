@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -13,10 +14,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const slTokenURL = "https://cloud.smartlogic.com/token"
-const maxAccessFailureCount = 5
-const thingURIPrefix = "http://www.ft.com/thing/"
-const managedLocationURIPrefix = "http://www.ft.com/ontology/managedlocation/"
+const (
+	slGetCredentialsURL = "https://cloud.smartlogic.com/token"
+	slTimeFormat        = "2006-01-02T15:04:05.000Z"
+
+	maxAccessFailureCount = 5
+
+	thingURIPrefix           = "http://www.ft.com/thing/"
+	managedLocationURIPrefix = "http://www.ft.com/ontology/managedlocation/"
+)
 
 type httpClient interface {
 	Do(req *http.Request) (resp *http.Response, err error)
@@ -31,14 +37,14 @@ type Clienter interface {
 type Client struct {
 	baseURL            url.URL
 	model              string
-	conceptUriPrefix   string
+	conceptURIPrefix   string
 	apiKey             string
 	httpClient         httpClient
 	accessToken        string
 	accessFailureCount int
 }
 
-func NewSmartlogicClient(httpClient httpClient, baseURL string, model string, apiKey string, conceptUriPrefix string) (Clienter, error) {
+func NewSmartlogicClient(httpClient httpClient, baseURL string, model string, apiKey string, conceptURIPrefix string) (Clienter, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return &Client{}, err
@@ -47,7 +53,7 @@ func NewSmartlogicClient(httpClient httpClient, baseURL string, model string, ap
 	client := Client{
 		baseURL:          *u,
 		model:            model,
-		conceptUriPrefix: conceptUriPrefix,
+		conceptURIPrefix: conceptURIPrefix,
 		apiKey:           apiKey,
 		httpClient:       httpClient,
 	}
@@ -85,11 +91,10 @@ func (c *Client) GetConcept(uuid string) ([]byte, error) {
 	return body, nil
 }
 
+// GetChangedConceptList returns a list of uuids of concepts that were changed since specified time.
 func (c *Client) GetChangedConceptList(changeDate time.Time) ([]string, error) {
-	// path=tchmodel:FTSemanticPlayground/changes&since=2017-05-31T13:00:00.000Z&properties=[]
 	reqURL := c.baseURL
-	q := `path=tchmodel:` + c.model + `/changes&since=` + changeDate.Format("2006-01-02T15:04:05.000Z") + `&properties=%5B%5D`
-	reqURL.RawQuery = q
+	reqURL.RawQuery = c.buildChangesAPIQueryParams(changeDate).Encode()
 
 	log.Debugf("Smartlogic Change List Request URL: %v", reqURL.String())
 	resp, err := c.makeRequest("GET", reqURL.String())
@@ -138,7 +143,7 @@ func (c *Client) makeRequest(method, url string) (*http.Response, error) {
 	if c.accessFailureCount >= maxAccessFailureCount {
 		// We've failed to get a valid access token multiple times in a row, so just error out.
 		log.WithField("method", "makeRequest").Error("Failed to get a valid access token")
-		return nil, errors.New("Failed to get a valid access token")
+		return nil, errors.New("failed to get a valid access token")
 	}
 
 	req, err := http.NewRequest(method, url, nil)
@@ -156,10 +161,15 @@ func (c *Client) makeRequest(method, url string) (*http.Response, error) {
 
 	// We're checking if we got a 401, which would be because the token had expired.  If it has, generate a new
 	// one and then make the request again.
-	if resp.StatusCode == 401 {
+	if resp.StatusCode == http.StatusUnauthorized {
 		resp.Body.Close()
 		c.accessFailureCount++
-		c.GenerateToken()
+		err = c.GenerateToken()
+		if err != nil {
+			// we were not able to generate new token, we will log it and try again to make the request
+			// which will try again to generate new token
+			log.Infof("Failed to generate new Smartlogic token: %v", err)
+		}
 		return c.makeRequest(method, url)
 	}
 	c.accessFailureCount = 0
@@ -181,7 +191,7 @@ func (c *Client) GenerateToken() error {
 	data.Set("grant_type", "apikey")
 	data.Set("key", c.apiKey)
 
-	req, err := http.NewRequest("POST", slTokenURL, bytes.NewBufferString(data.Encode()))
+	req, err := http.NewRequest("POST", slGetCredentialsURL, bytes.NewBufferString(data.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err != nil {
 		log.WithError(err).WithField("method", "GenerateToken").Error("Error creating the request")
@@ -213,9 +223,26 @@ func (c *Client) buildConceptPath(uuid string) string {
 		Because the API call needs to be made as part of the 'path' query parameter, we need to escape the IRI twice,
 		once to encode the IRI according to how Smartlogic needs it and once to encode it as a query parameter.
 	*/
-	concept := "<" + c.conceptUriPrefix + uuid + ">"
+	concept := "<" + c.conceptURIPrefix + uuid + ">"
 	encodedConcept := url.QueryEscape(url.QueryEscape(concept))
 
 	encodedProperties := url.QueryEscape("<http://www.ft.com/ontology/shortLabel>")
 	return "model:" + c.model + "/" + encodedConcept + "&properties=%5B%5D,skosxl:prefLabel/skosxl:literalForm,skosxl:altLabel/skosxl:literalForm," + encodedProperties + "/skosxl:literalForm"
+}
+
+// buildChangesAPIQueryParams returns map of type url.Values containing all query params needed to perform request to the Smartlogic API
+// that returns the changes on the model since specified time
+func (c *Client) buildChangesAPIQueryParams(changeDate time.Time) url.Values {
+	// Construct the request query params in such way that only the ids of the concepts affected by the change will be returned.
+	// Example: path=tchmodel:MODEL_ID/teamwork:Change/rdf:instance&properties=sem:about&filters=subject(sem:committed%3E%222020-04-05T00:00:00.990Z%22%5E%5Exsd:dateTime)
+	// URL decoded example: path=tchmodel:MODEL_ID/teamwork:Change/rdf:instance&properties=sem:about&filters=subject(sem:committed>"2020-04-05T00:00:00.990Z"^^xsd:dateTime)
+	queryParams := url.Values{}
+
+	queryParams.Add("path", fmt.Sprintf("tchmodel:%s/teamwork:Change/rdf:instance", c.model))
+	queryParams.Add("properties", "sem:about")
+
+	timeFilter := fmt.Sprintf("sem:committed>\"%s\"^^xsd:dateTime", changeDate.Format(slTimeFormat))
+	queryParams.Add("filters", fmt.Sprintf("subject(%s)", timeFilter))
+
+	return queryParams
 }
