@@ -188,7 +188,7 @@ func TestClient_GetConcept_URLError(t *testing.T) {
 }
 
 func TestClient_GetChangedConceptList_Success(t *testing.T) {
-	conceptResponse, err := ioutil.ReadFile("../resources/get-changed-concepts.json")
+	conceptResponse, err := ioutil.ReadFile("testdata/get-changed-concepts.json")
 	assert.NoError(t, err)
 
 	sl, err := NewSmartlogicTestClient(
@@ -211,7 +211,7 @@ func TestClient_GetChangedConceptList_Success(t *testing.T) {
 }
 
 func TestClient_GetChangedConceptList_RequestError(t *testing.T) {
-	conceptResponse, err := ioutil.ReadFile("../resources/get-changed-concepts.json")
+	conceptResponse, err := ioutil.ReadFile("testdata/get-changed-concepts.json")
 	assert.NoError(t, err)
 
 	requestError := errors.New("anerror")
