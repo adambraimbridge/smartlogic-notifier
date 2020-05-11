@@ -170,21 +170,81 @@ func TestClient_MakeRequest_RequestError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestClient_GetConcept_URLError(t *testing.T) {
-	conceptResponse := "response"
+func TestClient_GetConcept(t *testing.T) {
+	tests := []struct {
+		name          string
+		slResponse    string
+		slStatus      int
+		httpError     error
+		expectedError error
+	}{
+		{
+			name:          "success",
+			slResponse:    "testdata/ft-concept.json",
+			slStatus:      http.StatusOK,
+			httpError:     nil,
+			expectedError: nil,
+		},
+		{
+			name:          "http failure",
+			slResponse:    "testdata/ft-concept.json",
+			slStatus:      http.StatusOK,
+			httpError:     errors.New("http request failed for some reason"),
+			expectedError: errors.New("some error to be returned, exact error is not relevant"),
+		},
+		{
+			name:          "smartlogic non-200 response",
+			slResponse:    "testdata/ft-concept.json",
+			slStatus:      http.StatusInternalServerError,
+			httpError:     nil,
+			expectedError: errors.New("some error to be returned, exact error is not relevant"),
+		},
+		{
+			name:          "smartlogic non-existing concept response",
+			slResponse:    "testdata/non-existing-concept.json",
+			slStatus:      http.StatusOK,
+			httpError:     nil,
+			expectedError: ErrorConceptDoesNotExist,
+		},
+		{
+			name:          "smartlogic invalid response",
+			slResponse:    "testdata/invalid-concept.json",
+			slStatus:      http.StatusOK,
+			httpError:     nil,
+			expectedError: errors.New("some error to be returned, exact error is not relevant"),
+		},
+	}
 
-	sl, err := NewSmartlogicTestClient(
-		&mockHTTPClient{
-			resp:       conceptResponse,
-			statusCode: http.StatusOK,
-			err:        nil,
-		}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
-	)
-	assert.NoError(t, err)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			slResponse, err := ioutil.ReadFile(test.slResponse)
+			assert.NoError(t, err)
 
-	concept, err := sl.GetConcept("a-uuid")
-	assert.NoError(t, err)
-	assert.EqualValues(t, conceptResponse, concept)
+			sl, err := NewSmartlogicTestClient(
+				&mockHTTPClient{
+					resp:       string(slResponse),
+					statusCode: test.slStatus,
+					err:        test.httpError,
+				}, "http://base/url", "modelName", "apiKey", "conceptUriPrefix",
+			)
+			assert.NoError(t, err)
+
+			concept, err := sl.GetConcept("test-uuid")
+			if err == nil && test.expectedError != nil {
+				t.Error("expected error getting concept")
+			}
+			if err != nil && test.expectedError == nil {
+				t.Errorf("unexpected error getting concept: %v", err)
+			}
+			if errors.Is(test.expectedError, ErrorConceptDoesNotExist) &&
+				!errors.Is(test.expectedError, ErrorConceptDoesNotExist) {
+				t.Errorf("expected ErrorConceptDoesNotExist, got %v", err)
+			}
+			if test.expectedError == nil {
+				assert.Equal(t, concept, slResponse)
+			}
+		})
+	}
 }
 
 func TestClient_GetChangedConceptList_Success(t *testing.T) {

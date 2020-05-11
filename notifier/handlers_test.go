@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -138,11 +139,23 @@ func TestHandlers(t *testing.T) {
 			name:       "Get Concept - Error",
 			method:     "GET",
 			url:        "/concept/11",
-			resultCode: 500,
-			resultBody: "{\"message\": \"There was an error retrieving the concept\", \"error\": \"can't find concept\"}",
+			resultCode: 404,
+			resultBody: "{\"message\": \"There was an error retrieving the concept\", \"error\": \"concept does not exist\"}",
 			mockService: &mockService{
 				getConcept: func(s string) ([]byte, error) {
-					return nil, errors.New("can't find concept")
+					return nil, smartlogic.ErrorConceptDoesNotExist
+				},
+			},
+		},
+		{
+			name:       "Get Concept - Error",
+			method:     "GET",
+			url:        "/concept/11",
+			resultCode: 500,
+			resultBody: "{\"message\": \"There was an error retrieving the concept\", \"error\": \"failed to get concept\"}",
+			mockService: &mockService{
+				getConcept: func(s string) ([]byte, error) {
+					return nil, errors.New("failed to get concept")
 				},
 			},
 		},

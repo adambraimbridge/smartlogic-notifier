@@ -2,11 +2,13 @@ package notifier
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
 	transactionidutils "github.com/Financial-Times/transactionid-utils-go"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -156,7 +158,11 @@ func (h *Handler) HandleGetConcept(resp http.ResponseWriter, req *http.Request) 
 
 	concept, err := h.notifier.GetConcept(uuid)
 	if err != nil {
-		writeJSONResponseMessage(resp, http.StatusInternalServerError, responseData{Msg: "There was an error retrieving the concept", Err: err})
+		errStatus := http.StatusInternalServerError
+		if errors.Is(err, smartlogic.ErrorConceptDoesNotExist) {
+			errStatus = http.StatusNotFound
+		}
+		writeJSONResponseMessage(resp, errStatus, responseData{Msg: "There was an error retrieving the concept", Err: err})
 		return
 	}
 	writeResponseData(resp, http.StatusOK, "application/ld+json", string(concept))
