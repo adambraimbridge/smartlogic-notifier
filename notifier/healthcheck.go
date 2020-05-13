@@ -87,9 +87,9 @@ func (hs *HealthService) Start() {
 		if err != nil {
 			log.WithError(err).Error("could not perform Smartlogic connectivity check")
 		}
-
-		c := time.Tick(hs.config.SuccessCacheTime)
-		for range c {
+		ticker := time.NewTicker(hs.config.SuccessCacheTime)
+		defer ticker.Stop()
+		for range ticker.C {
 			err := hs.updateSmartlogicSuccessCache()
 			if err != nil {
 				log.WithError(err).Error("could not perform latest Smartlogic connectivity check")
