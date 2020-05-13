@@ -239,7 +239,18 @@ func TestHandlers(t *testing.T) {
 			m := mux.NewRouter()
 			handler.RegisterEndpoints(m)
 
-			healthService := NewHealthService(d.mockService, "system-code", "app-name", "description", "testModel", time.Minute)
+			healthConfig := &HealthServiceConfig{
+				AppSystemCode:          "system-code",
+				AppName:                "app-name",
+				Description:            "description",
+				SmartlogicModel:        "testModel",
+				SmartlogicModelConcept: "testConcept",
+				SuccessCacheTime:       1 * time.Minute,
+			}
+			healthService, err := NewHealthService(d.mockService, healthConfig)
+			if err != nil {
+				t.Fatal(err)
+			}
 			healthService.Start()
 			_ = healthService.RegisterAdminEndpoints(m)
 
@@ -536,6 +547,110 @@ func TestGettingSmartlogicChangesOneRequestAtATime(t *testing.T) {
 	}
 }
 
+func TestNewHealthService(t *testing.T) {
+	tests := []struct {
+		name          string
+		config        HealthServiceConfig
+		expectedError bool
+	}{
+		{
+			name: "success",
+			config: HealthServiceConfig{
+				AppSystemCode:          "test-smartlogic-notifier",
+				AppName:                "test-smartlogic-notifier",
+				Description:            "test description",
+				SmartlogicModel:        "TestSmartlogicModel",
+				SmartlogicModelConcept: "b1a492d9-dcfe-43f8-8072-17b4618a78fd",
+				SuccessCacheTime:       1 * time.Minute,
+			},
+			expectedError: false,
+		},
+		{
+			name: "missing app system code",
+			config: HealthServiceConfig{
+				AppSystemCode:          "",
+				AppName:                "test-smartlogic-notifier",
+				Description:            "test description",
+				SmartlogicModel:        "TestSmartlogicModel",
+				SmartlogicModelConcept: "b1a492d9-dcfe-43f8-8072-17b4618a78fd",
+				SuccessCacheTime:       1 * time.Minute,
+			},
+			expectedError: true,
+		},
+		{
+			name: "missing app name",
+			config: HealthServiceConfig{
+				AppSystemCode:          "test-smartlogic-notifier",
+				AppName:                "",
+				Description:            "test description",
+				SmartlogicModel:        "TestSmartlogicModel",
+				SmartlogicModelConcept: "b1a492d9-dcfe-43f8-8072-17b4618a78fd",
+				SuccessCacheTime:       1 * time.Minute,
+			},
+			expectedError: true,
+		},
+		{
+			name: "missing description",
+			config: HealthServiceConfig{
+				AppSystemCode:          "test-smartlogic-notifier",
+				AppName:                "test-smartlogic-notifier",
+				Description:            "",
+				SmartlogicModel:        "TestSmartlogicModel",
+				SmartlogicModelConcept: "b1a492d9-dcfe-43f8-8072-17b4618a78fd",
+				SuccessCacheTime:       1 * time.Minute,
+			},
+			expectedError: true,
+		},
+		{
+			name: "missing Smartlogic model",
+			config: HealthServiceConfig{
+				AppSystemCode:          "test-smartlogic-notifier",
+				AppName:                "test-smartlogic-notifier",
+				Description:            "test description",
+				SmartlogicModel:        "",
+				SmartlogicModelConcept: "b1a492d9-dcfe-43f8-8072-17b4618a78fd",
+				SuccessCacheTime:       1 * time.Minute,
+			},
+			expectedError: true,
+		},
+		{
+			name: "missing healtcheck concept",
+			config: HealthServiceConfig{
+				AppSystemCode:          "test-smartlogic-notifier",
+				AppName:                "test-smartlogic-notifier",
+				Description:            "test description",
+				SmartlogicModel:        "TestSmartlogicModel",
+				SmartlogicModelConcept: "",
+				SuccessCacheTime:       1 * time.Minute,
+			},
+			expectedError: true,
+		},
+		{
+			name: "missing cache time period",
+			config: HealthServiceConfig{
+				AppSystemCode:          "test-smartlogic-notifier",
+				AppName:                "test-smartlogic-notifier",
+				Description:            "test description",
+				SmartlogicModel:        "TestSmartlogicModel",
+				SmartlogicModelConcept: "b1a492d9-dcfe-43f8-8072-17b4618a78fd",
+				SuccessCacheTime:       0,
+			},
+			expectedError: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := NewHealthService(&mockService{}, &test.config)
+			if err != nil && !test.expectedError {
+				t.Errorf("unexpected error initializing HealthService: %v", err)
+			}
+			if err == nil && test.expectedError {
+				t.Error("expected error initializing HealthService")
+			}
+		})
+	}
+}
+
 func TestHealthServiceChecks(t *testing.T) {
 	t.Parallel()
 	log.SetOutput(ioutil.Discard)
@@ -627,7 +742,18 @@ func TestHealthServiceChecks(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			m := mux.NewRouter()
 			healthcheckCacheInterval := 10 * time.Millisecond
-			healthService := NewHealthService(test.mockService, "system-code", "app-name", "description", "testModel", healthcheckCacheInterval)
+			healthConfig := &HealthServiceConfig{
+				AppSystemCode:          "system-code",
+				AppName:                "app-name",
+				Description:            "description",
+				SmartlogicModel:        "testModel",
+				SmartlogicModelConcept: "testConcept",
+				SuccessCacheTime:       healthcheckCacheInterval,
+			}
+			healthService, err := NewHealthService(test.mockService, healthConfig)
+			if err != nil {
+				t.Fatal(err)
+			}
 			healthService.Start()
 			_ = healthService.RegisterAdminEndpoints(m)
 
@@ -687,7 +813,18 @@ func TestHealthServiceCache(t *testing.T) {
 			m := mux.NewRouter()
 
 			healthcheckCacheInterval := 20 * time.Millisecond
-			healthService := NewHealthService(mockSvc, "system-code", "app-name", "description", "testModel", healthcheckCacheInterval)
+			healthConfig := &HealthServiceConfig{
+				AppSystemCode:          "system-code",
+				AppName:                "app-name",
+				Description:            "description",
+				SmartlogicModel:        "testModel",
+				SmartlogicModelConcept: "testConcept",
+				SuccessCacheTime:       healthcheckCacheInterval,
+			}
+			healthService, err := NewHealthService(mockSvc, healthConfig)
+			if err != nil {
+				t.Fatal(err)
+			}
 			healthService.Start()
 			_ = healthService.RegisterAdminEndpoints(m)
 			// give time the cache of the Healthcheck service to be updated to be updated (getConcept to be called)

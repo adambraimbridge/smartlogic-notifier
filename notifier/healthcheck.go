@@ -16,9 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// FTUuid is the uuid of the organisation Financial Times in Smartlogic.
-const FTUuid = "b1a492d9-dcfe-43f8-8072-17b4618a78fd"
-
 const (
 	businessImpact = "Editorial updates of concepts in Smartlogic will not be ingested into UPP"
 	panicGuideURL  = "https://runbooks.in.ft.com/smartlogic-notifier"
@@ -27,37 +24,59 @@ const (
 // HealthService is responsible for gtg and health checks.
 type HealthService struct {
 	sync.RWMutex
-	config            *config
+	config            *HealthServiceConfig
 	notifier          Servicer
 	Checks            []fthealth.Check
 	checkSuccessCache bool
 }
 
-type config struct {
-	appSystemCode               string
-	appName                     string
-	description                 string
-	smartlogicModel             string
-	healthcheckSuccessCacheTime time.Duration
+type HealthServiceConfig struct {
+	AppSystemCode          string
+	AppName                string
+	Description            string
+	SmartlogicModel        string
+	SmartlogicModelConcept string
+	SuccessCacheTime       time.Duration
+}
+
+func (c *HealthServiceConfig) Validate() error {
+	if c.AppSystemCode == "" {
+		return errors.New("property AppSystemCode is required")
+	}
+	if c.AppName == "" {
+		return errors.New("property AppName is required")
+	}
+	if c.Description == "" {
+		return errors.New("property Description is required")
+	}
+	if c.SmartlogicModel == "" {
+		return errors.New("property SmartlogicModel is required")
+	}
+	if c.SmartlogicModelConcept == "" {
+		return errors.New("property SmartlogicModelConcept is required")
+	}
+	if c.SuccessCacheTime.Nanoseconds() <= 0 {
+		return errors.New("property SuccessCacheTime is required")
+	}
+	return nil
 }
 
 // NewHealthService initialises the HealthCheck service but doesn't start the updating of the health check result.
-func NewHealthService(notifier Servicer, appSystemCode string, appName string, description string, smartlogicModel string, healthcheckSuccessCacheTime time.Duration) *HealthService {
+func NewHealthService(notifier Servicer, config *HealthServiceConfig) (*HealthService, error) {
+	err := config.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+
 	service := &HealthService{
-		config: &config{
-			appSystemCode:               appSystemCode,
-			appName:                     appName,
-			description:                 description,
-			smartlogicModel:             smartlogicModel,
-			healthcheckSuccessCacheTime: healthcheckSuccessCacheTime,
-		},
+		config:   config,
 		notifier: notifier,
 	}
 	service.Checks = []fthealth.Check{
 		service.kafkaHealthCheck(),
 		service.smartlogicHealthCheck(),
 	}
-	return service
+	return service, nil
 }
 
 // Start starts separate go routine responsible for updating the cached result of the gtg/health check.
@@ -69,7 +88,7 @@ func (hs *HealthService) Start() {
 			log.WithError(err).Error("could not perform Smartlogic connectivity check")
 		}
 
-		c := time.Tick(hs.config.healthcheckSuccessCacheTime)
+		c := time.Tick(hs.config.SuccessCacheTime)
 		for range c {
 			err := hs.updateSmartlogicSuccessCache()
 			if err != nil {
@@ -79,12 +98,12 @@ func (hs *HealthService) Start() {
 	}()
 }
 
-// updateSmartlogicSuccessCache checks the UUID for Financial Times organisation as it should always exist in the Smartlogic ontology
-// and based on the success of the check updates the HealthService cache.
+// updateSmartlogicSuccessCache tries to get concept from the Smartlogic model, which uuid is given in the config
+// of the health check service, and based on the success of the check updates the HealthService cache.
 func (hs *HealthService) updateSmartlogicSuccessCache() error {
-	_, err := hs.notifier.GetConcept(FTUuid)
+	_, err := hs.notifier.GetConcept(hs.config.SmartlogicModelConcept)
 	if err != nil {
-		log.WithError(err).Error("FT organisation concept couldn't be retrieved")
+		log.WithError(err).Errorf("health check concept %s couldn't be retrieved", hs.config.SmartlogicModelConcept)
 		hs.setCheckSuccessCache(false)
 		return err
 	}
@@ -109,9 +128,9 @@ func (hs *HealthService) RegisterAdminEndpoints(router *mux.Router) http.Handler
 func (hs *HealthService) HealthcheckHandler() fthealth.TimedHealthCheck {
 	return fthealth.TimedHealthCheck{
 		HealthCheck: fthealth.HealthCheck{
-			SystemCode:  hs.config.appSystemCode,
-			Name:        hs.config.appName,
-			Description: hs.config.description,
+			SystemCode:  hs.config.AppSystemCode,
+			Name:        hs.config.AppName,
+			Description: hs.config.Description,
 			Checks:      hs.Checks,
 		},
 		Timeout: 10 * time.Second,
@@ -121,7 +140,7 @@ func (hs *HealthService) HealthcheckHandler() fthealth.TimedHealthCheck {
 func (hs *HealthService) smartlogicHealthCheck() fthealth.Check {
 	return fthealth.Check{
 		BusinessImpact:   businessImpact,
-		Name:             fmt.Sprintf("Check connectivity to Smartlogic model %s", hs.config.smartlogicModel),
+		Name:             fmt.Sprintf("Check connectivity to Smartlogic model %s", hs.config.SmartlogicModel),
 		PanicGuide:       panicGuideURL,
 		Severity:         3,
 		TechnicalSummary: `Check that Smartlogic is healthy and the API is accessible.  If it is, restart this service.`,

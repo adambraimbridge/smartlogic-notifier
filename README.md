@@ -32,6 +32,7 @@ Options:
         --smartlogicBaseURL=""                          Base URL for the Smartlogic instance ($SMARTLOGIC_BASE_URL)
         --smartlogicModel=""                            Smartlogic model to read from ($SMARTLOGIC_MODEL)
         --smartlogicAPIKey=""                           Smartlogic model to read from ($SMARTLOGIC_API_KEY)
+        --smartlogicHealthcheckConcept=""               Concept uuid existing in the Smartlogic model to be used for healthcheck ($SMARTLOGIC_HEALTHCHECK_CONCEPT)
         --port="8080"                                   Port to listen on ($APP_PORT)
         --logLevel="info"                               Level of logging to be shown ($LOG_LEVEL)
         --healthcheckSuccessCacheTime="1m"              How long to cache a successful Smartlogic response for ($HEALTHCHECK_SUCCESS_CACHE_TIME)

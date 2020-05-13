@@ -76,6 +76,12 @@ func main() {
 		Value:  "30s",
 	})
 
+	smartlogicHealthcheckConcept := app.String(cli.StringOpt{
+		Name:   "smartlogicHealthcheckConcept",
+		Desc:   "Concept uuid existing in the Smartlogic model to be used for healthcheck",
+		EnvVar: "SMARTLOGIC_HEALTHCHECK_CONCEPT",
+	})
+
 	port := app.String(cli.StringOpt{
 		Name:   "port",
 		Value:  "8080",
@@ -124,7 +130,21 @@ func main() {
 		log.WithError(err).Fatalf("Smartlogic timeout duration %s could not be parsed", *smartlogicTimeout)
 	}
 
+	if *smartlogicBaseURL == "" {
+		log.Fatalf("Failed to start the service, smartlogicBaseURL is required.")
+	}
+	if *smartlogicModel == "" {
+		log.Fatalf("Failed to start the service, smartlogicModel is required.")
+	}
+	if *smartlogicAPIKey == "" {
+		log.Fatalf("Failed to start the service, smartlogicAPIKey is required.")
+	}
+	if *smartlogicHealthcheckConcept == "" {
+		log.Fatalf("Failed to start the service, smartlogicHealthcheckConcept is required.")
+	}
+
 	log.Infof("Caching successful health for %s", smartlogicHealthCacheDuration)
+	log.Infof("Checking Smartlogic health via getting concept %s of model %s", *smartlogicHealthcheckConcept, *smartlogicModel)
 
 	app.Action = func() {
 		log.Infof("System code: %s, App Name: %s, Port: %s", *appSystemCode, *appName, *port)
@@ -147,7 +167,18 @@ func main() {
 		handler := notifier.NewNotifierHandler(service)
 		handler.RegisterEndpoints(router)
 
-		healthService := notifier.NewHealthService(service, *appSystemCode, *appName, appDescription, *smartlogicModel, smartlogicHealthCacheDuration)
+		healthServiceConfig := &notifier.HealthServiceConfig{
+			AppSystemCode:          *appSystemCode,
+			AppName:                *appName,
+			Description:            appDescription,
+			SmartlogicModel:        *smartlogicModel,
+			SmartlogicModelConcept: *smartlogicHealthcheckConcept,
+			SuccessCacheTime:       smartlogicHealthCacheDuration,
+		}
+		healthService, err := notifier.NewHealthService(service, healthServiceConfig)
+		if err != nil {
+			log.Fatalf("Failed to initialize health check service: %v", err)
+		}
 		healthService.Start()
 		monitoringRouter := healthService.RegisterAdminEndpoints(router)
 
