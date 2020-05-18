@@ -24,6 +24,8 @@ const (
 	managedLocationURIPrefix = "http://www.ft.com/ontology/managedlocation/"
 )
 
+var ErrorConceptDoesNotExist = errors.New("concept does not exist")
+
 type httpClient interface {
 	Do(req *http.Request) (resp *http.Response, err error)
 }
@@ -69,26 +71,67 @@ func (c *Client) AccessToken() string {
 	return c.accessToken
 }
 
+// GetConcept returns the json-ld Smartlogic representation of a concept with the given uuid via calling the Smartlogic API.
 func (c *Client) GetConcept(uuid string) ([]byte, error) {
 	reqURL := c.baseURL
 	q := "path=" + c.buildConceptPath(uuid)
 	reqURL.RawQuery = q
 
-	log.Debugf("Smartlogic Request URL: %v", reqURL.String())
+	entry := log.WithField("method", "GetConcept").WithField("uuid", uuid)
+	entry.Debugf("Smartlogic Request URL: %v", reqURL.String())
+
 	resp, err := c.makeRequest("GET", reqURL.String())
 	if err != nil {
-		log.WithError(err).WithField("method", "GetConcept").Error("Error creating the request")
-		return []byte{}, err
+		entry.WithError(err).Error("Error creating the request")
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.WithError(err).WithField("method", "GetConcept").Error("Error reading the response body")
-		return []byte{}, err
+	if resp.StatusCode != http.StatusOK {
+		err = fmt.Errorf("smartlogic returned status %v getting concept with uuid %v", resp.StatusCode, uuid)
+		entry.WithError(err).Error("Error response returned")
+		return nil, err
 	}
 
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		entry.WithError(err).Error("Error reading the response body")
+		return nil, err
+	}
+	// As Smartlogic returns 200 response for non-existing concept with simple representation of the non existing concept,
+	// we additionally validate the response in order to check whether the response is for existing concept.
+	ok, err := c.isExistingConcept(body)
+	if err != nil {
+		return nil, fmt.Errorf("invalid concept representation returned for uuid %v", uuid)
+	}
+	if !ok {
+		return nil, ErrorConceptDoesNotExist
+	}
 	return body, nil
+}
+
+// isExistingConcept checks whether the Smartlogic json-ld concept response is for existing concept
+func (c *Client) isExistingConcept(conceptResp []byte) (bool, error) {
+	response := struct {
+		Graph []struct {
+			SemGUUID []struct {
+				Value string `json:"@value"`
+			} `json:"sem:guid"`
+		} `json:"@graph"`
+	}{}
+	err := json.Unmarshal(conceptResp, &response)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse Smartlogic response: %w", err)
+	}
+	if len(response.Graph) == 0 {
+		return false, errors.New("invalid Smartlogic concept response")
+	}
+	// the json-ld representation of existing concept has "sem:guid" value, as oppose to the json-ld representation of
+	// non-existing concept that only has @id property
+	if len(response.Graph[0].SemGUUID) == 0 || response.Graph[0].SemGUUID[0].Value == "" {
+		return false, nil
+	}
+	return true, nil
 }
 
 // GetChangedConceptList returns a list of uuids of concepts that were changed since specified time.

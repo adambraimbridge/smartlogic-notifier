@@ -7,10 +7,10 @@ import (
 	"io/ioutil"
 	http "net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 
+	"github.com/Financial-Times/smartlogic-notifier/smartlogic"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -138,11 +138,23 @@ func TestHandlers(t *testing.T) {
 			name:       "Get Concept - Error",
 			method:     "GET",
 			url:        "/concept/11",
-			resultCode: 500,
-			resultBody: "{\"message\": \"There was an error retrieving the concept\", \"error\": \"can't find concept\"}",
+			resultCode: 404,
+			resultBody: "{\"message\": \"There was an error retrieving the concept\", \"error\": \"concept does not exist\"}",
 			mockService: &mockService{
 				getConcept: func(s string) ([]byte, error) {
-					return nil, errors.New("can't find concept")
+					return nil, smartlogic.ErrorConceptDoesNotExist
+				},
+			},
+		},
+		{
+			name:       "Get Concept - Error",
+			method:     "GET",
+			url:        "/concept/11",
+			resultCode: 500,
+			resultBody: "{\"message\": \"There was an error retrieving the concept\", \"error\": \"failed to get concept\"}",
+			mockService: &mockService{
+				getConcept: func(s string) ([]byte, error) {
+					return nil, errors.New("failed to get concept")
 				},
 			},
 		},
@@ -226,7 +238,18 @@ func TestHandlers(t *testing.T) {
 			m := mux.NewRouter()
 			handler.RegisterEndpoints(m)
 
-			healthService := NewHealthService(d.mockService, "system-code", "app-name", "description", "testModel", time.Minute)
+			healthConfig := &HealthServiceConfig{
+				AppSystemCode:          "system-code",
+				AppName:                "app-name",
+				Description:            "description",
+				SmartlogicModel:        "testModel",
+				SmartlogicModelConcept: "testConcept",
+				SuccessCacheTime:       1 * time.Minute,
+			}
+			healthService, err := NewHealthService(d.mockService, healthConfig)
+			if err != nil {
+				t.Fatal(err)
+			}
 			healthService.Start()
 			_ = healthService.RegisterAdminEndpoints(m)
 
@@ -521,205 +544,4 @@ func TestGettingSmartlogicChangesOneRequestAtATime(t *testing.T) {
 			assert.Equal(t, 1, sl.getChangedConceptListCallCount())
 		})
 	}
-}
-
-func TestHealthServiceChecks(t *testing.T) {
-	t.Parallel()
-	log.SetOutput(ioutil.Discard)
-
-	tests := []struct {
-		name           string
-		url            string
-		mockService    *mockService
-		expectedStatus int
-		expectedBody   string
-	}{
-		{
-			name: "gtg endpoint success",
-			url:  "__gtg",
-			mockService: &mockService{
-				getConcept: func(s string) ([]byte, error) {
-					return []byte(""), nil
-				},
-				checkKafkaConnectivity: func() error {
-					return nil
-				},
-			},
-			expectedStatus: 200,
-			expectedBody:   "OK",
-		},
-		{
-			name: "health endpoint success",
-			url:  "__health",
-			mockService: &mockService{
-				getConcept: func(s string) ([]byte, error) {
-					return []byte(""), nil
-				},
-				checkKafkaConnectivity: func() error {
-					return nil
-				},
-			},
-			expectedStatus: 200,
-			expectedBody:   `"ok":true}`,
-		},
-		{
-			name: "gtg endpoint Smartlogic failure",
-			url:  "__gtg",
-			mockService: &mockService{
-				getConcept: func(s string) ([]byte, error) {
-					return nil, errors.New("couldn't retrieve FT organisation from Smartlogic")
-				},
-				checkKafkaConnectivity: func() error {
-					return nil
-				},
-			},
-			expectedStatus: 503,
-			expectedBody:   "latest Smartlogic connectivity check is unsuccessful",
-		},
-		{
-			name: "gtg endpoint Kafka failure",
-			url:  "__gtg",
-			mockService: &mockService{
-				getConcept: func(s string) ([]byte, error) {
-					return []byte(""), nil
-				},
-			},
-			expectedStatus: 503,
-			expectedBody:   "Error verifying open connection to Kafka",
-		},
-		{
-			name: "health endpoint Smartlogic failure",
-			url:  "__health",
-			mockService: &mockService{
-				checkKafkaConnectivity: func() error {
-					return nil
-				},
-			},
-			expectedStatus: 200, // the __health endpoint always returns 200
-			expectedBody:   `"ok":false,"severity":3}`,
-		},
-		{
-			name: "health endpoint Kafka failure",
-			url:  "__health",
-			mockService: &mockService{
-				getConcept: func(s string) ([]byte, error) {
-					return []byte(""), nil
-				},
-			},
-			expectedStatus: 200, // the __health endpoint always returns 200
-			expectedBody:   `"ok":false,"severity":3}`,
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			m := mux.NewRouter()
-			healthcheckCacheInterval := 10 * time.Millisecond
-			healthService := NewHealthService(test.mockService, "system-code", "app-name", "description", "testModel", healthcheckCacheInterval)
-			healthService.Start()
-			_ = healthService.RegisterAdminEndpoints(m)
-
-			// give time the cache of the Healthcheck service to be updated to be updated (getConcept to be called)
-			time.Sleep(healthcheckCacheInterval)
-
-			assertRequest(t, m, test.url, test.expectedBody, test.expectedStatus)
-		})
-	}
-}
-
-func TestHealthServiceCache(t *testing.T) {
-	t.Parallel()
-	log.SetOutput(ioutil.Discard)
-
-	tests := []struct {
-		name                  string
-		url                   string
-		expectedFailureStatus int
-		expectedSuccessBody   string
-		expectedFailureBody   string
-	}{
-		{
-			name:                  "Test the cache for __health endpoint",
-			url:                   "__health",
-			expectedFailureStatus: 200,
-			expectedSuccessBody:   `"ok":true`,
-			expectedFailureBody:   `"ok":false`,
-		},
-		{
-			name:                  "Test the cache for __gtg endpoint",
-			url:                   "__gtg",
-			expectedFailureStatus: 503,
-			expectedSuccessBody:   "OK",
-			expectedFailureBody:   "latest Smartlogic connectivity check is unsuccessful",
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			ok := true
-			okMutex := sync.RWMutex{}
-			getConcept := func(s string) ([]byte, error) {
-				okMutex.Lock()
-				defer okMutex.Unlock()
-				if ok {
-					return []byte(""), nil
-				}
-				return nil, errors.New("FT concept couldn't be retrieved")
-			}
-
-			mockSvc := &mockService{
-				getConcept: getConcept,
-				checkKafkaConnectivity: func() error {
-					return nil
-				},
-			}
-			m := mux.NewRouter()
-
-			healthcheckCacheInterval := 20 * time.Millisecond
-			healthService := NewHealthService(mockSvc, "system-code", "app-name", "description", "testModel", healthcheckCacheInterval)
-			healthService.Start()
-			_ = healthService.RegisterAdminEndpoints(m)
-			// give time the cache of the Healthcheck service to be updated to be updated (getConcept to be called)
-			time.Sleep(healthcheckCacheInterval / 2)
-
-			// check we return ok
-			assertRequest(t, m, test.url, test.expectedSuccessBody, 200)
-
-			// tell GetConcept to return error, mocking we couldn't get the FT concept from Smartlogic
-			okMutex.Lock()
-			ok = false
-			okMutex.Unlock()
-
-			// but expect to return cached ok
-			assertRequest(t, m, test.url, test.expectedSuccessBody, 200)
-
-			// wait for cache to clear
-			time.Sleep(3 * healthcheckCacheInterval / 2)
-
-			// and expect gtg to return err
-			assertRequest(t, m, test.url, test.expectedFailureBody, test.expectedFailureStatus)
-
-			// tell GetConcept to return okay
-			okMutex.Lock()
-			ok = true
-			okMutex.Unlock()
-			// wait for cache to clear
-			time.Sleep(3 * healthcheckCacheInterval / 2)
-
-			// and expect gtg to return ok
-			assertRequest(t, m, test.url, test.expectedSuccessBody, 200)
-		})
-	}
-}
-
-func assertRequest(t *testing.T, m http.Handler, url string, expectedBody string, expectedStatus int) {
-	req, err := http.NewRequest("GET", "/"+url, bytes.NewBufferString(""))
-	if err != nil {
-		t.Fatalf("failed creating new test requst to %s", url)
-	}
-	rr := httptest.NewRecorder()
-	m.ServeHTTP(rr, req)
-	b, err := ioutil.ReadAll(rr.Body)
-	assert.NoError(t, err)
-	body := string(b)
-	assert.Equal(t, expectedStatus, rr.Code, url)
-	assert.Contains(t, body, expectedBody, url)
 }

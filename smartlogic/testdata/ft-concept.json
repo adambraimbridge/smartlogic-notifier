@@ -1,0 +1,127 @@
+{
+  "@graph": [
+    {
+      "@id": "http://www.ft.com/thing/b1a492d9-dcfe-43f8-8072-17b4618a78fd",
+      "@type": [
+        "http://www.ft.com/ontology/organisation/Organisation"
+      ],
+      "http://www.ft.com/ontology/TMEIdentifier": [
+        {
+          "@value": "TnN0ZWluX09OX0FGVE1fT05fMTIzMDEw-T04="
+        }
+      ],
+      "http://www.ft.com/ontology/factsetIdentifier": [
+        {
+          "@value": "05M787-E"
+        }
+      ],
+      "sem:guid": [
+        {
+          "@value": "b1a492d9-dcfe-43f8-8072-17b4618a78fd"
+        }
+      ],
+      "skos:topConceptOf": [
+        {
+          "@id": "http://www.ft.com/ontology/scheme/Organisations"
+        }
+      ],
+      "skosxl:prefLabel": [
+        {
+          "@id": "http://www.ft.com/thing/b1a492d9-dcfe-43f8-8072-17b4618a78fd/FinancialTimesGroupLtd_en"
+        }
+      ]
+    }
+  ],
+  "@context": {
+    "@language": "",
+    "semspincache": "http://www.smartlogic.com/2018/06/semaphore-spin-cache#",
+    "model": "urn:x-evn-master:",
+    "tchmodel": "urn:x-evn-tch-union:",
+    "evntask": "urn:x-evn-tag:",
+    "task": "urn:x-ort-tag:",
+    "sysmodel": "urn:x-sys-model:",
+    "systask": "urn:x-sys-task:",
+    "systaskext": "urn:x-sys-task-with-master:",
+    "temp": "urn:x-temp:",
+    "tempgraph": "urn:x-temp-graph:",
+    "specialgraph": "urn:x-special-graph:",
+    "user": "urn:x-tb-users:",
+    "role": "urn:x-tb-role:",
+    "tag": "urn:x-tags:",
+    "evnimport": "urn:x-tb:evnimport#",
+    "meta": "http://www.smartlogic.com/2014/10/semaphore-meta#",
+    "sys": "http://www.smartlogic.com/2014/10/semaphore-sys#",
+    "sem": "http://www.smartlogic.com/2014/08/semaphore-core#",
+    "semlang": "http://www.smartlogic.com/2015/03/semaphore-languages#",
+    "semfun": "http://www.smartlogic.com/2015/02/semaphore-functions#",
+    "semspin": "http://www.smartlogic.com/2015/02/semaphore-spin-functions#",
+    "semspinmap": "http://www.smartlogic.com/2016/04/semaphore-spinMap#",
+    "semspinx": "http://www.smartlogic.com/2015/11/semaphore-spin#",
+    "semutils": "http://www.smartlogic.com/2015/09/semaphore-utils#",
+    "sempermissions": "http://www.smartlogic.com/2015/11/semaphore-permissions#",
+    "semwidgets": "http://www.smartlogic.com/2016/02/semaphore-widgets#",
+    "semcommands": "http://www.smartlogic.com/2019/04/semaphore-commands#",
+    "semreports": "http://www.smartlogic.com/2017/06/semaphore-reports#",
+    "semupdates": "http://www.smartlogic.com/2019/04/semaphore-updates#",
+    "semworkspace": "http://www.smartlogic.com/2019/01/semaphore-workspace#",
+    "semui": "http://www.smartlogic.com/2017/12/semaphore-ui#",
+    "semlisteners": "http://www.smartlogic.com/2016/10/semaphore-listeners#",
+    "semtemplates": "http://www.smartlogic.com/2016/04/semaphore-templates#",
+    "teamworkrulesx": "http://www.smartlogic.com/2016/05/semaphore-teamworkrulesx#",
+    "semvar": "http://www.smartlogic.com/2015/10/semaphore-var#",
+    "sempath": "http://www.smartlogic.com/2016/01/semaphore-path#",
+    "example": "http://proto.smartlogic.com/example#",
+    "smf": "http://topbraid.org/sparqlmotionfunctions#",
+    "teamwork": "http://topbraid.org/teamwork#",
+    "taxonomies": "http://evn.topbraidlive.org/evnprojects#",
+    "swa": "http://topbraid.org/swa#",
+    "tables": "http://topbraid.org/tables#",
+    "sh": "http://www.w3.org/ns/shacl#",
+    "sp": "http://spinrdf.org/sp#",
+    "spin": "http://spinrdf.org/spin#",
+    "spinmap": "http://spinrdf.org/spinmap#",
+    "spl": "http://spinrdf.org/spl#",
+    "afn": "http://jena.apache.org/ARQ/function#",
+    "ui": "http://uispin.org/ui#",
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    "fn": "http://www.w3.org/2005/xpath-functions#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "list": "http://jena.hpl.hp.com/ARQ/list#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "skosxl": "http://www.w3.org/2008/05/skos-xl#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "sioc": "http://rdfs.org/sioc/ns#",
+    "dc": "http://purl.org/dc/elements/1.1/",
+    "dcterms": "http://purl.org/dc/terms/",
+    "lang": "http://id.loc.gov/vocabulary/iso639-1/",
+    "spif": "http://spinrdf.org/spif#",
+    "arg": "http://spinrdf.org/arg#",
+    "semgroups": "http://www.smartlogic.com/2018/04/semaphore-groups#",
+    "semgroupsfun": "http://www.smartlogic.com/2018/04/semaphore-groups-functions#",
+    "semvirt": "http://www.smartlogic.com/2019/01/semaphore-virtualgraph#",
+    "semvirtfun": "http://www.smartlogic.com/2019/01/semaphore-virtualgraph-functions#",
+    "sys:Model": "owl:Ontology",
+    "sys:Task": "teamwork:Tag",
+    "graph:teamwork": "http://topbraid.org/teamwork",
+    "graph:users": "http://server.topbraidlive.org/dynamic/users",
+    "graph:sempermissions": "http://www.smartlogic.com/2015/11/semaphore-permissions",
+    "graph:semrolemappings": "http://www.smartlogic.com/2018/01/semaphore-role-mappings",
+    "meta:transitiveType": {
+      "@type": "@id"
+    },
+    "semmonitoring": "http://www.smartlogic.com/2019/02/semaphore-monitoring#",
+    "semord": "http://www.smartlogic.com/2018/03/semaphore-ordering#",
+    "semordfun": "http://www.smartlogic.com/2018/03/semaphore-ordering-functions#",
+    "semordrules": "http://www.smartlogic.com/2018/03/semaphore-ordering-rules#",
+    "semplugin": "http://www.smartlogic.com/2018/06/semaphore-plugins#",
+    "semsh": "http://www.smartlogic.com/2019/06/semaphore-shacl#",
+    "semshfun": "http://www.smartlogic.com/2018/03/semaphore-shacl-functions#",
+    "semshreports": "http://www.smartlogic.com/2018/10/semaphore-shacl-reports#",
+    "semupgrade": "http://www.smartlogic.com/2019/03/semaphore-upgrade#",
+    "sempub": "http://www.smartlogic.com/2017/06/semaphore-publisher#",
+    "sempubpermissions": "http://www.smartlogic.com/2019/03/semaphore-publisher-permissions#",
+    "sempubconf": "http://www.smartlogic.com/2019/04/semaphore-publisher-configuration#"
+  }
+}

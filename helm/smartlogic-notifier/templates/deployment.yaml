@@ -54,6 +54,8 @@ spec:
             configMapKeyRef:
               name: global-config
               key: kafka.url
+        - name: SMARTLOGIC_HEALTHCHECK_CONCEPT
+          value: {{ .Values.config.smartlogicHealthcheckConcept }}
         - name: KAFKA_TOPIC
           value: {{ .Values.config.kafkaTopic }}
         - name: CONCEPT_URI_PREFIX
