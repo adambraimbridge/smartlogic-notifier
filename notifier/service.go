@@ -42,8 +42,10 @@ func (s *Service) GetChangedConceptList(lastChange time.Time) (uuids []string, e
 func (s *Service) Notify(lastChange time.Time, transactionID string) error {
 	changedConcepts, err := s.smartlogic.GetChangedConceptList(lastChange)
 	if err != nil {
-		log.WithError(err).Error("There was an error retrieving the list of changed concepts")
-		return err
+		return fmt.Errorf("failed to fetch the list of changed concepts: %w", err)
+	}
+	if len(changedConcepts) == 0 {
+		return fmt.Errorf("no changed concepts since %v were returned for transaction id %s", lastChange, transactionID)
 	}
 
 	return s.ForceNotify(changedConcepts, transactionID)
@@ -68,6 +70,7 @@ func (s *Service) ForceNotify(UUIDs []string, transactionID string) error {
 		log.WithFields(log.Fields{
 			"request_transaction_id": transactionID,
 			"concept_transaction_id": newTransactionID,
+			"concept_uuid":           conceptUUID,
 		}).Info("Sending message to Kafka")
 		err = s.kafka.SendMessage(message)
 		if err != nil {
