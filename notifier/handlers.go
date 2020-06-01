@@ -85,9 +85,10 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	go func() {
+		transactionID := req.Header.Get(transactionidutils.TransactionIDHeader)
 		h.requestCh <- notificationRequest{
 			notifySince:   lastChange,
-			transactionID: req.Header.Get(transactionidutils.TransactionIDHeader),
+			transactionID: transactionID,
 		}
 	}()
 
@@ -226,7 +227,7 @@ func (h *Handler) processNotifyRequests() {
 
 		err := h.notifier.Notify(n.notifySince, n.transactionID)
 		if err != nil {
-			continue
+			log.WithError(err).Errorf("Failed to notify for a change with transaction id %s since %v", n.transactionID, n.notifySince)
 		}
 	}
 }
