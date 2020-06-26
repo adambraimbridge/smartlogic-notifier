@@ -1,0 +1,10 @@
+# Values used for the deployed application.
+replicaCount: 2
+service:
+  name: smartlogic-notifier
+eksCluster: true
+config:
+  smartlogicModelKey: "smartlogic.model"
+  logLevel: INFO
+  kafkaTopic: SmartlogicConcept
+  conceptUriPrefix: "http://www.ft.com/thing/"
