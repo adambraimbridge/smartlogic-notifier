@@ -44,6 +44,17 @@ func (s *Service) Notify(lastChange time.Time, transactionID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to fetch the list of changed concepts: %w", err)
 	}
+
+	if len(changedConcepts) == 0 {
+		// After some time interval retry getting the changed concept list,
+		// because Smartlogic could have notified us before the data is available to be retrieved.
+		time.Sleep(time.Second * 5)
+		changedConcepts, err = s.smartlogic.GetChangedConceptList(lastChange)
+		if err != nil {
+			return fmt.Errorf("failed while retrying to fetch the list of changed concepts: %w", err)
+		}
+	}
+
 	if len(changedConcepts) == 0 {
 		return fmt.Errorf("no changed concepts since %v were returned for transaction id %s", lastChange, transactionID)
 	}
