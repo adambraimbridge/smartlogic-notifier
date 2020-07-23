@@ -54,6 +54,32 @@ func TestService_Notify(t *testing.T) {
 	assert.Equal(t, 1, kc.sentCount)
 }
 
+func TestService_RetryNotify(t *testing.T) {
+	var isGetFuncCalled bool
+	kc := &mockKafkaClient{}
+	sl := &mockSmartlogicClient{
+		concepts: map[string]string{
+			"uuid1": "concept1",
+			"uuid2": "concept2",
+		},
+		getChangedConceptListFunc: func(changeDate time.Time) ([]string, error) {
+			if isGetFuncCalled {
+				return []string{"uuid2"}, nil
+			}
+
+			isGetFuncCalled = true
+			return []string{}, nil
+		},
+	}
+
+	service := NewNotifierService(kc, sl)
+
+	err := service.Notify(time.Now(), "transactionID")
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, kc.sentCount)
+}
+
 func TestService_ForceNotify(t *testing.T) {
 	kc := &mockKafkaClient{}
 	sl := &mockSmartlogicClient{
