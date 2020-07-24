@@ -27,12 +27,12 @@ paths:
         - name: modifiedGraphId
           in: query
           required: true
-          description: ID of the model which was changed.
+          description: ID of the model which was changed. The allowed values should contain FTProductionModel or FTStagingModel.
           type: string
         - name: affectedGraphId
           in: query
           required: true
-          description: ID of a model which generated the notification.  In normal use, will be the same as modifiedGraphId.
+          description: ID of the model which generated the notification. In normal use, will be the same as modifiedGraphId. The allowed values should contain FTProductionModel or FTStagingModel.
           type: string
         - name: lastChangeDate
           in: query

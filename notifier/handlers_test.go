@@ -34,7 +34,7 @@ func TestHandlers(t *testing.T) {
 		{
 			name:       "Notify - Success",
 			method:     "GET",
-			url:        fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s", today),
+			url:        fmt.Sprintf("/notify?affectedGraphId=%s&modifiedGraphId=%s&lastChangeDate=%s", ftStagingModel, ftStagingModel, today),
 			resultBody: "{\"message\": \"Concepts successfully ingested\"}",
 			resultCode: 200,
 			mockService: &mockService{
@@ -46,9 +46,9 @@ func TestHandlers(t *testing.T) {
 		{
 			name:        "Notify - Missing query parameters",
 			method:      "GET",
-			url:         "/notify?modifiedGraphId=2&lastChangeDate=2017-05-31T13:00:00.000Z",
+			url:         fmt.Sprintf("/notify?modifiedGraphId=%s&lastChangeDate=2017-05-31T13:00:00.000Z", ftStagingModel),
 			resultCode:  400,
-			resultBody:  "{\"message\": \"Query parameters were not set: affectedGraphId\"}",
+			resultBody:  "{\"message\": \"Query parameters are missing or incorrect: affectedGraphId\"}",
 			mockService: &mockService{},
 		},
 		{
@@ -56,13 +56,21 @@ func TestHandlers(t *testing.T) {
 			method:      "GET",
 			url:         "/notify",
 			resultCode:  400,
-			resultBody:  "{\"message\": \"Query parameters were not set: modifiedGraphId, affectedGraphId, lastChangeDate\"}",
+			resultBody:  "{\"message\": \"Query parameters are missing or incorrect: modifiedGraphId, affectedGraphId, lastChangeDate\"}",
+			mockService: &mockService{},
+		},
+		{
+			name:        "Notify - Incorrect modifiedGraphId and affectedGraphId",
+			method:      "GET",
+			url:         fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s", today),
+			resultCode:  400,
+			resultBody:  "{\"message\": \"Query parameters are missing or incorrect: modifiedGraphId, affectedGraphId\"}",
 			mockService: &mockService{},
 		},
 		{
 			name:        "Notify - Bad query parameters ",
 			method:      "GET",
-			url:         "/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=notadate",
+			url:         fmt.Sprintf("/notify?affectedGraphId=%s&modifiedGraphId=%s&lastChangeDate=%s", ftStagingModel, ftStagingModel, "nodate"),
 			resultCode:  400,
 			resultBody:  "{\"message\": \"Date is not in the format 2006-01-02T15:04:05Z\"}",
 			mockService: &mockService{},
@@ -70,7 +78,7 @@ func TestHandlers(t *testing.T) {
 		{
 			name:        "Notify - Bad lastChangeDate parameter",
 			method:      "GET",
-			url:         fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s", past),
+			url:         fmt.Sprintf("/notify?affectedGraphId=%s&modifiedGraphId=%s&lastChangeDate=%s", ftStagingModel, ftStagingModel, past),
 			resultCode:  400,
 			resultBody:  fmt.Sprintf("{\"message\": \"Last change date should be time point in the last %.0f hours\"}", LastChangeLimit.Hours()),
 			mockService: &mockService{},
@@ -78,7 +86,7 @@ func TestHandlers(t *testing.T) {
 		{
 			name:       "Notify - Error",
 			method:     "GET",
-			url:        fmt.Sprintf("/notify?affectedGraphId=1&modifiedGraphId=2&lastChangeDate=%s", today),
+			url:        fmt.Sprintf("/notify?affectedGraphId=%s&modifiedGraphId=%s&lastChangeDate=%s", ftStagingModel, ftStagingModel, today),
 			resultBody: "{\"message\": \"Concepts successfully ingested\"}",
 			resultCode: 200,
 			mockService: &mockService{

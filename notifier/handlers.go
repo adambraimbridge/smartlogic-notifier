@@ -17,6 +17,10 @@ import (
 
 // TimeFormat is the format used to read time values from request parameters
 const TimeFormat = "2006-01-02T15:04:05Z"
+const (
+	ftProdModel    = "FTProductionModel"
+	ftStagingModel = "FTStagingModel"
+)
 
 // maxTimeValue represents the maximum useful time value (for comparisons like finding the minimum value in a range of times)
 var maxTimeValue = time.Unix(1<<63-62135596801, 999999999)
@@ -62,11 +66,11 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 	vars := req.URL.Query()
 	var notSet []string
 	modifiedGraphId := vars.Get("modifiedGraphId")
-	if modifiedGraphId == "" {
+	if modifiedGraphId == "" || !strings.Contains(modifiedGraphId, ftProdModel) && !strings.Contains(modifiedGraphId, ftStagingModel) {
 		notSet = append(notSet, "modifiedGraphId")
 	}
 	affectedGraphId := vars.Get("affectedGraphId")
-	if affectedGraphId == "" {
+	if affectedGraphId == "" || !strings.Contains(affectedGraphId, ftProdModel) && !strings.Contains(affectedGraphId, ftStagingModel) {
 		notSet = append(notSet, "affectedGraphId")
 	}
 	lastChangeDate := vars.Get("lastChangeDate")
@@ -75,7 +79,7 @@ func (h *Handler) HandleNotify(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	if len(notSet) > 0 {
-		writeJSONResponseMessage(resp, http.StatusBadRequest, responseData{Msg: `Query parameters were not set: ` + strings.Join(notSet, ", ")})
+		writeJSONResponseMessage(resp, http.StatusBadRequest, responseData{Msg: `Query parameters are missing or incorrect: ` + strings.Join(notSet, ", ")})
 		return
 	}
 
